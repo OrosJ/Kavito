@@ -62,7 +62,7 @@ function App() {
           element={<ProtectedRoute isAuthenticated={isAuthenticated} element={<CompShowUsers />} />} />
         <Route path='/create-user' 
           element={<ProtectedRoute isAuthenticated={isAuthenticated} element={<CompCreateUser />} />} />
-        <Route path='/edit-user' 
+        <Route path='/edit-user/:id' 
           element={<CompCreateUser />} />
         <Route path='/categories' 
           element={<ProtectedRoute isAuthenticated={isAuthenticated} element={<CompShowCategories />} />} />

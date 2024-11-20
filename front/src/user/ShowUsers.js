@@ -47,6 +47,9 @@ const CompShowUsers = () => {
                   <td>{user.email}</td>
                   <td>{user.role}</td>
                   <td>
+                    <Link to={`/edit-user/${user.id}`} className='btn btn-warning ms-2'>
+                      <i className="fa-regular fa-pen-to-square"></i> Editar
+                    </Link>
                     <button onClick={() => deleteUser(user.id)} className='btn btn-danger'>
                       <i className="fa-regular fa-trash-can"></i> Eliminar
                     </button>
