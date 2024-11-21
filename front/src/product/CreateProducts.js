@@ -1,101 +1,142 @@
-import axios from "axios";
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import axios from 'axios'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 
-const URI = 'http://localhost:8000/products/';
-const CATEGORY_URI = 'http://localhost:8000/categories/';  // Ruta para obtener las categorías
+const URI = 'http://localhost:8000/products/'
+const URI_CATEGORIES = 'http://localhost:8000/categories/'
 
-const CompCreateProduct = () => {
-    const [descripcion, setDescripcion] = useState('');
-    const [cantidad, setCantidad] = useState('');
-    const [precio, setPrecio] = useState('');
-    const [categorias, setCategorias] = useState([]);  // Estado para almacenar las categorías
-    const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('');  // Estado para la categoría seleccionada
-    const navigate = useNavigate();
+const CreateProduct = () => {
+    const navigate = useNavigate()
+    
+    // State para los campos del formulario
+    const [descripcion, setDescripcion] = useState('')
+    const [cantidad, setCantidad] = useState('')
+    const [precio, setPrecio] = useState('')
+    const [categoria, setCategoria] = useState('')
+    const [image, setImage] = useState(null)
+    
+    // State para las categorías
+    const [categories, setCategories] = useState([])
+
+    // State para manejar los errores
+    const [error, setError] = useState('')
 
     // Obtener las categorías al cargar el componente
     useEffect(() => {
-        const fetchCategories = async () => {
+        const getCategories = async () => {
             try {
-                const response = await axios.get(CATEGORY_URI);
-                setCategorias(response.data);  // Establecer las categorías obtenidas
+                const res = await axios.get(URI_CATEGORIES)
+                setCategories(res.data)  // Guarda las categorías disponibles
             } catch (error) {
-                console.error('Error al obtener las categorías', error);
+                console.error("Error al obtener las categorías:", error)
             }
-        };
+        }
 
-        fetchCategories();
-    }, []);
+        getCategories()
+    }, [])
 
-    // Manejar la creación del producto
-    const store = async (e) => {
-        e.preventDefault();
-        // Enviar los datos del producto y la categoría seleccionada
-        await axios.post(URI, {
-            descripcion,
-            cantidad,
-            precio,
-            categoria: categoriaSeleccionada  // Enviar el id de la categoría seleccionada
-        });
-        navigate('/products');  // Redirigir a la lista de productos después de crear el producto
-    };
+    // Función para manejar el submit del formulario
+    const handleSubmit = async (e) => {
+        e.preventDefault()
+        
+        // Validación de campos
+        if (!descripcion || !cantidad || !precio || !categoria || !image) {
+            setError('Por favor, complete todos los campos.')
+            return
+        }
+
+        const formData = new FormData()
+        formData.append('descripcion', descripcion)
+        formData.append('cantidad', cantidad)
+        formData.append('precio', precio)
+        formData.append('categoria', categoria)
+        formData.append('image', image)
+
+        try {
+            await axios.post(URI, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            })
+            navigate('/products')  // Redirige a la lista de productos
+        } catch (error) {
+            setError('Hubo un error al crear el producto.')
+            console.error("Error al crear el producto:", error)
+        }
+    }
 
     return (
-        <div>
-            <h1>Crear Producto</h1>
-            <form onSubmit={store}>
-                <div className='mb-3'>
-                    <label className='form-label'>Descripción del producto:</label>
-                    <textarea
+        <div className="container mt-5">
+            <h2 className="mb-4">Crear Producto</h2>
+            {error && <div className="alert alert-danger">{error}</div>}
+            <form onSubmit={handleSubmit} encType="multipart/form-data">
+                <div className="mb-3">
+                    <label htmlFor="descripcion" className="form-label">Descripción</label>
+                    <input 
+                        type="text" 
+                        className="form-control" 
+                        id="descripcion" 
                         value={descripcion}
-                        onChange={(e) => setDescripcion(e.target.value)}
-                        type="text"
-                        className="form-control"
-                        placeholder="Escribe la descripción del producto"
+                        onChange={(e) => setDescripcion(e.target.value)} 
+                        required
                     />
                 </div>
-                {/* Lista desplegable de categorías */}
-                <div>
-                    <label>Selecciona una categoría:</label>
-                    <select
-                        value={categoriaSeleccionada}
-                        onChange={(e) => setCategoriaSeleccionada(e.target.value)}
-                        className="form-control"
+
+                <div className="mb-3">
+                    <label htmlFor="cantidad" className="form-label">Cantidad</label>
+                    <input 
+                        type="number" 
+                        className="form-control" 
+                        id="cantidad" 
+                        value={cantidad}
+                        onChange={(e) => setCantidad(e.target.value)} 
+                        required
+                    />
+                </div>
+
+                <div className="mb-3">
+                    <label htmlFor="precio" className="form-label">Precio</label>
+                    <input 
+                        type="number" 
+                        className="form-control" 
+                        id="precio" 
+                        value={precio}
+                        onChange={(e) => setPrecio(e.target.value)} 
+                        required
+                    />
+                </div>
+
+                <div className="mb-3">
+                    <label htmlFor="categoria" className="form-label">Categoría</label>
+                    <select 
+                        className="form-select" 
+                        id="categoria" 
+                        value={categoria}
+                        onChange={(e) => setCategoria(e.target.value)} 
+                        required
                     >
-                        <option value="">Seleccione una categoría</option>
-                        {categorias.map((categoria) => (
-                            <option key={categoria.id} value={categoria.id}>
-                                {categoria.categoryname}
-                            </option>
+                        <option value="">Seleccionar categoría</option>
+                        {categories.map((cat) => (
+                            <option key={cat.id} value={cat.id}>{cat.categoryname}</option>
                         ))}
                     </select>
                 </div>
-                <div>
-                    <label>Cantidad:</label>
-                    <input
-                        type="number"
-                        value={cantidad}
-                        onChange={(e) => setCantidad(e.target.value)}
-                        className="form-control"
-                        placeholder="Cantidad del producto"
+
+                <div className="mb-3">
+                    <label htmlFor="image" className="form-label">Imagen</label>
+                    <input 
+                        type="file" 
+                        className="form-control" 
+                        id="image" 
+                        onChange={(e) => setImage(e.target.files[0])} 
+                        required
                     />
                 </div>
 
-                <div>
-                    <label>Precio:</label>
-                    <input
-                        type="number"
-                        value={precio}
-                        onChange={(e) => setPrecio(e.target.value)}
-                        className="form-control"
-                        placeholder="Precio del producto"
-                        step="0.01"
-                    />
-                </div>
-                <button type='submit' className='btn btn-primary'>Crear Producto</button>
+                <button type="submit" className="btn btn-primary">Crear Producto</button>
             </form>
         </div>
-    );
-};
+    )
+}
 
-export default CompCreateProduct;
+export default CreateProduct

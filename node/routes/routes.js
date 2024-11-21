@@ -1,11 +1,13 @@
 import express from 'express'
-import { createProduct, deleteProduct, getAllProducts, getProduct, updateProduct } from '../controllers/ProductController.js'
+import { createProduct, deleteProduct, getAllProducts, getProduct, updateProduct, uploadImage } from '../controllers/ProductController.js'
 const router = express.Router()
 
 router.get('/', getAllProducts)
 router.get('/:id', getProduct)
-router.post('/', createProduct)
-router.put('/:id', updateProduct)
+// Ruta para crear un producto (con imagen)
+router.post('/', uploadImage, createProduct);
+// Ruta para actualizar un producto (con imagen)
+router.put('/:id', uploadImage, updateProduct);
 router.delete('/:id', deleteProduct)
 
 
