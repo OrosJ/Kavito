@@ -1,6 +1,10 @@
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from "axios";
-import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { MaterialReactTable } from 'material-react-table';
+import { Button, IconButton, Tooltip, Box } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 
 const URI = "http://localhost:8000/products/";
 
@@ -31,6 +35,43 @@ const CompShowProducts = () => {
     }
   };
 
+  const columns = useMemo(() => [
+    {
+      accessorKey: 'id',
+      header: '#',
+      size: 50,
+    },
+    {
+      accessorKey: 'descripcion',
+      header: 'Descripcion',
+    },
+    {
+      accessorKey: 'category.categoryname',
+      header: 'Categoria',
+    },
+    {
+      accessorKey: 'cantidad',
+      header: 'Cantidad',
+      size: 70,
+    },
+    {
+      accessorKey: 'precio',
+      header: 'Precio',
+      size: 70,
+    },
+    {
+      accessorKey: 'image',
+      header: 'Imagen',
+      Cell: ({ row }) => (
+        <img
+          src={row.original.image} // Asegúrate de que la URL de la imagen esté bien formada
+          alt={""} // Opcional: puedes poner una descripción alternativa
+          style={{ width: '50px', height: '50px', objectFit: 'cover' }} // Ajusta el estilo según lo necesites
+        />
+      ),
+    },
+  ], []);
+
   return (
     <div className="container">
       <div className="row">
@@ -38,59 +79,34 @@ const CompShowProducts = () => {
           <Link to="/create" className="btn btn-primary mt-2 mb-2">
             <i className="fa-regular fa-square-plus"></i> NUEVO REGISTRO
           </Link>
-          <table className="table table-hover">
-            <thead>
-              <tr>
-                <th scope="col">#</th>
-                <th scope="col">Descripción</th>
-                <th scope="col">Categoria</th>
-                <th scope="col">Cantidad</th>
-                <th scope="col">Precio</th>
-                <th scope="col">Imagen</th>
-                <th scope="col">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((product) => (
-                <tr key={product.id}>
-                  <td>{product.id}</td>
-                  <td>{product.descripcion}</td>
-                  <td>{product.category.categoryname}</td>
-                  <td>{product.cantidad}</td>
-                  <td>{product.precio}</td>
-                  <td>
-                    {product.image ? (
-                      <>
-                        {/* {console.log(product.image)} */}
-                        <img
-                          src={product.image}
-                          alt=""
-                          style={{
-                            width: "50px",
-                            height: "50px",
-                            objectFit: "cover",
-                          }}
-                        />
-                      </>
-                    ) : (
-                      <span>No disponible</span>
-                    )}
-                  </td>
-                  <td>
-                    <Link to={`/edit/${product.id}`} className="btn btn-info">
-                      <i className="fa-regular fa-pen-to-square"></i> Editar
-                    </Link>
-                    <button
-                      onClick={() => deleteProduct(product.id)}
-                      className="btn btn-danger"
+          {products.length > 0 ? (
+            <MaterialReactTable
+              columns={columns}
+              data={products}
+              enableRowActions
+              renderRowActions={({ row }) => (
+                <Box sx={{ display: 'flex', gap: '0.5rem' }}>
+                  <Tooltip title="Editar">
+                    {/* Envolver el IconButton con el Link */}
+                    <IconButton color="primary" component={Link} to={`/edit/${row.original.id}`}>
+                      <EditIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Eliminar">
+                    <IconButton
+                      color="error"
+                      onClick={() => deleteProduct(row.original.id)}
                     >
-                      <i className="fa-regular fa-trash-can"></i> Eliminar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              )}
+              positionActionsColumn="last"
+            />
+          ) : (
+            <p>Cargando datos...</p>
+          )}
         </div>
       </div>
     </div>

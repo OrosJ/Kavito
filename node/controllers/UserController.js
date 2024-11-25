@@ -2,6 +2,23 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/UserModel.js';
 
+// Middleware para verificar el token
+export const verifyToken = (req, res, next) => {
+  const token = req.headers['authorization'];
+
+  if (!token) {
+    return res.status(403).json({ message: 'Token no proporcionado' });
+  }
+
+  jwt.verify(token, 'secreta_clave', (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ message: 'Token no válido o expirado' });
+    }
+    req.user = decoded; // Añadir información del usuario decodificada
+    next(); // Continuar con la ejecución de la ruta
+  });
+};
+
 // Crear un nuevo usuario
 export const createUser = async (req, res) => {
   const { username, email, password, role } = req.body;
@@ -52,6 +69,7 @@ export const loginUser = async (req, res) => {
     res.status(500).json({ message: 'Error en la autenticación', error });
   }
 };
+
 
 // Obtener todos los usuarios
 export const getUsers = async (req, res) => {

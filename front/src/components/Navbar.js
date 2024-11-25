@@ -1,60 +1,84 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { FaHome, FaBox, FaUsers, FaCogs, FaSignOutAlt } from 'react-icons/fa';
+import React, { useState, useEffect, useRef } from "react";
+import { FaUserCircle, FaSignOutAlt, FaBars } from "react-icons/fa";
 import { useNavigate } from 'react-router-dom';
+import "../styles/Navbar.css";
 
-const CompNavbar = ({ onLogout }) => {
+const Navbar = ({ onLogout, onToggleSidebar }) => {
+  const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || 'Usuario');
+  const [isDropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    onLogout();
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      try {
+        const decodedToken = JSON.parse(atob(token.split('.')[1]));
+        setUserRole(decodedToken.role || 'Usuario');
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
+    }
+
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = (e) => {
+    e.preventDefault(); // Prevenimos cualquier comportamiento por defecto
+    e.stopPropagation(); // Evitamos la propagación del evento
+    console.log('Logout clicked');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userRole');
+    if (typeof onLogout === 'function') {
+      onLogout();
+    }
     navigate('/login');
   };
 
+
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-dark shadow-lg">
-      <div className="container">
-        <Link className="navbar-brand" to="/">
-          <FaHome /> KAVITO
-        </Link>
-        <button
-          className="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
-          aria-controls="navbarNav"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
-        >
-          <span className="navbar-toggler-icon"></span>
-        </button>
-        <div className="collapse navbar-collapse" id="navbarNav">
-          <ul className="navbar-nav ms-auto">
-            <li className="nav-item">
-              <Link className="nav-link" to="/products">
-                <FaBox className="me-2" /> Productos
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link" to="/users">
-                <FaUsers className="me-2" /> Usuarios
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link" to="/categories">
-                <FaCogs className="me-2" /> Categorías
-              </Link>
-            </li>
-            <li className="nav-item">
-              <button onClick={handleLogout} className="btn btn-danger">
-                <FaSignOutAlt className="me-2" /> Cerrar sesión
+    <nav className="nav-navbar nav-navbar-responsive">
+      <div className="nav-navbar-content">
+      <button onClick={onToggleSidebar}>
+        <FaBars /> {/* Icono de menú hamburguesa */}
+      </button>
+        <div className="nav-user-section" ref={dropdownRef}>
+        <div 
+            className="nav-user-info"
+            onClick={() => {
+              setDropdownOpen(!isDropdownOpen);
+            }}
+          >
+            <span className="nav-user-name">Bienvenido, {userRole}</span>
+            <FaUserCircle className="nav-user-icon" />
+          </div>
+
+          {isDropdownOpen && (
+            <div className="nav-dropdown-menu">
+              <div className="nav-dropdown-header">
+                <span>Perfil de Usuario</span>
+              </div>
+              <button 
+                className="nav-logout-button" 
+                onClick={handleLogout}
+                type="button" // Añadimos esto para mayor claridad
+              >
+                <span>Cerrar sesión</span>
+                <FaSignOutAlt size={16} />
               </button>
-            </li>
-          </ul>
+            </div>
+          )}
         </div>
       </div>
     </nav>
   );
 };
 
-export default CompNavbar;
+export default Navbar;

@@ -1,114 +1,34 @@
-/* Estilos generales de la aplicación */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  overflow-x: hidden; /* Para evitar desbordamientos horizontales */
+}
+
 .App {
-  text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 15vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  min-height: 100vh;
+  flex-grow: 1;
 }
 
-.App-link {
-  color: #61dafb;
+.content {
+  margin-left: 260px; /* Mantener el margen para el sidebar más ancho */
+  padding-top: calc(60px + 40px); /* Reducir el espacio para el Navbar */
+  background-color: rgb(146, 21, 21); /* Fondo rojo */  
+  width: calc(100% - 280px - 0px); /* Ancho restante después del sidebar y el margen a la derecha */
+  min-height: calc(100vh - 110px); /* Altura total de la pantalla menos el espacio para el navbar y footer */
+  padding: 20px; /* Espaciado interno */
+  box-sizing: border-box; /* Asegura que el padding no afecte el cálculo del ancho */
+  margin-top: 80px; /* Opcional: un poco de margen superior para separar del borde del navbar */
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+footer {
+  margin-top: auto;
+}
+
+@media (max-width: 768px) {
+  .content {
+    margin-left: 0; /* Elimina margen del sidebar */
+    width: 100%; /* Ocupa todo el ancho */
   }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Estilos para el Navbar */
-.navbar {
-  border-bottom: 2px solid #fff;
-}
-
-.navbar-brand {
-  font-size: 1.5rem;
-  font-weight: bold;
-  text-transform: uppercase;
-}
-
-.nav-link {
-  font-size: 1.1rem;
-  color: white;
-  transition: color 0.3s;
-}
-
-.nav-link:hover {
-  color: #f8d210; /* Color al hacer hover sobre el link */
-}
-
-.navbar-toggler-icon {
-  background-color: #f8d210;
-}
-
-.navbar-nav .nav-item {
-  margin-left: 15px;
-}
-
-/* Estilos para el Dropdown */
-.dropdown-toggle {
-  background-color: #28a745;  /* Fondo verde para el botón de rol */
-  border-color: #28a745;
-  color: white;
-}
-
-.dropdown-toggle:hover {
-  background-color: #218838;  /* Fondo más oscuro cuando se pasa el mouse */
-  border-color: #1e7e34;
-}
-
-.dropdown-menu {
-  background-color: #333;  /* Fondo oscuro para el menú */
-  border-color: #444; /* Un borde más claro */
-}
-
-.dropdown-item {
-  color: white;  /* Color blanco para los elementos del dropdown */
-}
-
-.dropdown-item:hover {
-  background-color: #f8d210; /* Color de fondo al hacer hover en el item */
-  color: #333; /* Color del texto */
-}
-
-.dropdown-toggle {
-  background-color: #007bff;  /* Fondo azul para el rol */
-  border-color: #007bff;
-}
-
-.dropdown-toggle:hover {
-  background-color: #0056b3;  /* Fondo más oscuro cuando se pasa el mouse */
-  border-color: #004085;
-}
-
-.btn-danger {
-  background-color: #dc3545;
-  border-color: #dc3545;
-}
-
-.btn-danger:hover {
-  background-color: #c82333;
-  border-color: #c82333;
 }

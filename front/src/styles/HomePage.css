@@ -1,0 +1,6 @@
+/* Asegura que la página ocupe toda la altura de la pantalla y centra el contenido verticalmente */
+.homepage-container {
+    padding-top: 20px; /* Añade un espacio en la parte superior (debajo del Navbar) */
+    text-align: center;
+  }
+  

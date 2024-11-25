@@ -21,6 +21,7 @@ const Login = ({ setIsAuthenticated }) => {
 
       // Guardar el token en el localStorage
       localStorage.setItem('authToken', token);
+      //localStorage.setItem('userRole', user.role);
 
       // Actualizar el estado de autenticación en App.js
       setIsAuthenticated(true);

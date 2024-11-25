@@ -1,0 +1,17 @@
+footer {
+    margin-top: auto;  /* Hace que el footer se coloque al final */
+    margin-left: 260px; /* Desplazar el footer a la derecha para respetar el espacio del sidebar */
+    width: calc(100% - 280px - 0px); /* Ajustar el ancho del footer para que respete el espacio del sidebar */
+    padding: 10px  20px;
+    background-color: #f1f1f1;
+    text-align: center;
+    color: #333;
+  }
+
+  @media (max-width: 768px) {
+    footer {
+      margin-left: 0;  /* Eliminar margen izquierdo en pantallas pequeñas */
+      width: 100%;  /* Hacer que el footer ocupe todo el ancho de la pantalla */
+      padding: 10px 15px;
+    }
+  }

@@ -1,6 +1,8 @@
-const HomePage = () => {
+import '../styles/HomePage.css';
+
+const HomePage = () => {  
     return (
-      <div className="text-center">
+      <div className="homepage-container">
         <h1>Bienvenido al Sistema</h1>
         <p>Selecciona una opción.</p>
       </div>

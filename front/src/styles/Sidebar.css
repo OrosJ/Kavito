@@ -1,0 +1,70 @@
+/* Sidebar flotante con más margen y bordes redondeados */
+.sidebar {
+    position: fixed;
+    top: 20px;  /* Desplazar el sidebar hacia abajo para que no se pegue al top */
+    left: 20px;  /* Desplazar más el sidebar hacia la derecha */
+    width: 230px;  /* Aumentar el ancho del sidebar */
+    height: calc(100vh - 40px);  /* Altura completa menos el espacio del navbar */
+    background-color: #343a40;  /* Fondo oscuro */
+    color: white;
+    padding-top: 20px;
+    border-top-right-radius: 10px;
+    border-top-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.3);  /* Efecto flotante */
+    z-index: 1000;  /* Asegurarnos de que se vea por encima del contenido */
+    transition: left 0.3s ease;
+  }
+  
+  .sidebar-header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .sidebar-menu {
+    list-style-type: none;
+    padding-left: 0;
+  }
+  
+  .sidebar-menu li {
+    margin: 15px 0;
+  }
+  
+  .sidebar-menu a {
+    color: white;
+    text-decoration: none;
+    display: block;
+    padding: 10px;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+    font-size: 16px;
+  }
+  
+  .sidebar-menu a:hover {
+    background-color: #495057;
+  }
+  
+  .sidebar-menu a svg {
+    margin-right: 10px;
+  }
+  
+  @media (max-width: 768px) {
+    .sidebar {
+      display: none; /* Oculta sidebar por defecto */
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 250px;
+      height: 100%;
+      background-color: white;
+      z-index: 1000;
+      transition: transform 0.3s ease;
+    }
+  
+    .sidebar.show {
+      display:block;
+      transform: translateX(0);
+    }
+
+  }
