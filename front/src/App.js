@@ -1,5 +1,5 @@
 import "./App.css";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Route, Routes, useNavigate, useLocation } from "react-router-dom";
 
 // Componentes
@@ -14,12 +14,16 @@ import CompShowUsers from "./user/ShowUsers";
 import CompCreateUser from "./user/CreateUsers";
 import CompShowCategories from "./category/ShowCategory";
 import CompCreateCategory from "./category/CreateCategory";
+import CompShowInvOuts from "./invout/ShowOuts.js";
+import CarritoComponent from "./invout/Cart.js";
+import ConfirmarSalida from "./invout/Cart.js";
 import Login from "./auth/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   // Estado de autenticación
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -28,7 +32,7 @@ function App() {
     const token = localStorage.getItem("authToken");
     if (token) {
       setIsAuthenticated(true);
-      // Solo redirigir a la página de inicio si estamos en la página de login
+      // redirigir a la página de inicio si estamos en la página de login
       if (location.pathname === "/login") {
         navigate("/");
       }
@@ -39,7 +43,7 @@ function App() {
 
   // Implementar un temporizador de inactividad
   useEffect(() => {
-    const timeout = 20 * 60 * 1000; // 20 minutos en milisegundos
+    const timeout = 20 * 60 * 1000; // 20 minutos en ms
     let timer;
 
     const resetTimer = () => {
@@ -72,29 +76,46 @@ function App() {
     setIsAuthenticated(false);
   };
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
+    /* console.log(isSidebarOpen); */
+  };
+
+  const closeSidebar = () => {
+    setIsSidebarOpen(false);
   };
 
   return (
     <div className="App">
       {/* Mostrar la barra de navegación solo si el usuario está autenticado */}
       {isAuthenticated && (
-        <CompNavbar onLogout={handleLogout} onToggleSidebar={toggleSidebar} />
+        <CompNavbar
+          onLogout={handleLogout}
+          onToggleSidebar={toggleSidebar}
+          isSidebarOpen={isSidebarOpen}
+        />
       )}
       {isAuthenticated && (
-        <Sidebar className={`sidebar ${isSidebarOpen ? "show" : ""}`} />
+        <Sidebar
+          className={`sidebar ${isSidebarOpen ? "show" : ""}`}
+          isSidebarOpen={isSidebarOpen}
+          onClose={closeSidebar}
+        />
       )}
 
-      <div className="content">
+      <div
+        className={`content ${
+          isAuthenticated ? "with-sidebar" : "full-screen"
+        }`}
+      >
         <Routes>
           {/* Ruta para login */}
           <Route
             path="/login"
             element={<Login setIsAuthenticated={setIsAuthenticated} />}
           />
-
+        </Routes>
+        <Routes>
           {/* Ruta para la página principal */}
           <Route
             path="/"
@@ -171,6 +192,34 @@ function App() {
               />
             }
           />
+          <Route
+            path="/invouts"
+            element={
+              <ProtectedRoute
+                isAuthenticated={isAuthenticated}
+                element={<CompShowInvOuts />}
+              />
+            }
+          />
+          <Route
+            path="/invouts/cart"
+            element={
+              <ProtectedRoute
+                isAuthenticated={isAuthenticated}
+                element={<CarritoComponent />}
+              />
+            }
+          />
+          <Route
+            path="/invouts/create"
+            element={
+              <ProtectedRoute
+                isAuthenticated={isAuthenticated}
+                element={<ConfirmarSalida />}
+              />
+            }
+          />
+          {/* <Route path="*" element={<div>404 - Página no encontrada</div>} /> */}
         </Routes>
       </div>
       <Footer />

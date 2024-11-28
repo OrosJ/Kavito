@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import "../styles/Login.css";
 
 const Login = ({ setIsAuthenticated }) => {
   const [username, setUsername] = useState('');
@@ -35,8 +36,8 @@ const Login = ({ setIsAuthenticated }) => {
   };
 
   return (
-    <div className="container d-flex justify-content-center align-items-center min-vh-100">
-      <div className="card p-4" style={{ maxWidth: '400px', width: '100%' }}>
+    <div className="login-container">
+      <div className="login-card">
         <h3 className="text-center mb-4">Iniciar sesión</h3>
 
         {error && <div className="alert alert-danger">{error}</div>}

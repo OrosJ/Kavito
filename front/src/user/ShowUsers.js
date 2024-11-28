@@ -17,7 +17,19 @@ const CompShowUsers = () => {
 
   const getUsers = async () => {
     try {
-      const res = await axios.get(URI);
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        console.log('No se encontró el token. Redirigiendo al login...');
+        // Aquí podrías redirigir al usuario a la página de login si no hay token
+        return;
+      }
+
+      const res = await axios.get(URI, {
+        headers: {
+          Authorization: `Bearer ${token}`,  // Incluye el token en los headers
+        },
+      });
+
       setUsers(res.data);
     } catch (error) {
       console.error('Error al obtener los usuarios:', error);
@@ -39,6 +51,7 @@ const CompShowUsers = () => {
     {
       accessorKey: 'id',
       header: '#',
+      size: 50,
     },
     {
       accessorKey: 'username',
@@ -56,6 +69,7 @@ const CompShowUsers = () => {
 
   return (
     <div className="container">
+      <h2>Usuarios</h2>
       <div className="row">
         <div className="col">
           <Link to="/create-user" style={{ textDecoration: 'none' }}>

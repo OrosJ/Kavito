@@ -33,7 +33,6 @@ const Navbar = ({ onLogout, onToggleSidebar }) => {
   const handleLogout = (e) => {
     e.preventDefault(); // Prevenimos cualquier comportamiento por defecto
     e.stopPropagation(); // Evitamos la propagación del evento
-    console.log('Logout clicked');
     localStorage.removeItem('authToken');
     localStorage.removeItem('userRole');
     if (typeof onLogout === 'function') {
@@ -42,19 +41,16 @@ const Navbar = ({ onLogout, onToggleSidebar }) => {
     navigate('/login');
   };
 
-
   return (
     <nav className="nav-navbar nav-navbar-responsive">
       <div className="nav-navbar-content">
-      <button onClick={onToggleSidebar}>
-        <FaBars /> {/* Icono de menú hamburguesa */}
-      </button>
+      <button onClick={() => {onToggleSidebar();}}>
+          <FaBars /> {/* Icono de menú hamburguesa */}
+        </button>
         <div className="nav-user-section" ref={dropdownRef}>
         <div 
             className="nav-user-info"
-            onClick={() => {
-              setDropdownOpen(!isDropdownOpen);
-            }}
+            onClick={() => {setDropdownOpen(!isDropdownOpen);}}
           >
             <span className="nav-user-name">Bienvenido, {userRole}</span>
             <FaUserCircle className="nav-user-icon" />
@@ -63,7 +59,7 @@ const Navbar = ({ onLogout, onToggleSidebar }) => {
           {isDropdownOpen && (
             <div className="nav-dropdown-menu">
               <div className="nav-dropdown-header">
-                <span>Perfil de Usuario</span>
+                
               </div>
               <button 
                 className="nav-logout-button" 

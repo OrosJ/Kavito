@@ -4,17 +4,17 @@ import User from '../models/UserModel.js';
 
 // Middleware para verificar el token
 export const verifyToken = (req, res, next) => {
-  const token = req.headers['authorization'];
+  const token = req.header('Authorization')?.split(' ')[1];
 
   if (!token) {
-    return res.status(403).json({ message: 'Token no proporcionado' });
+    return res.status(401).json({ message: 'Token no proporcionado' });
   }
 
-  jwt.verify(token, 'secreta_clave', (err, decoded) => {
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) {
       return res.status(403).json({ message: 'Token no válido o expirado' });
     }
-    req.user = decoded; // Añadir información del usuario decodificada
+    req.user = user; // Añadir información del usuario decodificada
     next(); // Continuar con la ejecución de la ruta
   });
 };

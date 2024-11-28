@@ -19,6 +19,16 @@
   text-align: right !important;
 }
 
+.nav-navbar-content button {
+  display: none; /* Oculto por defecto */
+  background: none;
+  border: none;
+  color: #333;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+}
+
 .nav-user-section {
   position: relative;
   display: flex;
@@ -37,6 +47,21 @@
   transition: background-color 0.2s;
   gap: 10px;
   margin-left: auto;
+}
+
+.nav-user-info:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.nav-user-name {
+  margin-right: 10px;
+  font-size: 16px;
+  color: #333;
+}
+
+.nav-user-icon {
+  font-size: 24px;
+  color: #666;
 }
 
 .nav-dropdown-menu {
@@ -77,27 +102,38 @@
   visibility: visible !important;
 }
 
-/* Aseguramos que el botón de logout siempre sea visible */
-.nav-logout-button svg {
-  display: inline-block !important;
-  margin-left: 8px;
+.nav-logout-button:hover {
+  background-color: #f1f3f5;
 }
 
 .nav-logout-button span {
-  display: inline-block !important;
+  margin-right: 10px;
 }
 
 @media (max-width: 768px) {
   .nav-navbar {
     left: 0;
     right: 0;
-    padding: 10px 15px;  /* Reducción de padding */
+    padding: 10px 15px; /* Reducción de padding */
     height: 60px; /* Mantener la misma altura */
   }
 
   .nav-navbar-content {
-    justify-content: space-between;  /* Cambiamos la distribución de los items */
-    padding: 0 10px;  /* Reducir padding */
+    justify-content: space-between; /* Cambiamos la distribución de los items */
+    padding: 0 10px; /* Reducir padding */
+  }
+
+  /* Botón de hamburguesa */
+  .nav-navbar-content button {
+    display: block;
+    position: relative;
+    top: 40%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #333;
+    font-size: 24px;
+    cursor: pointer; 
   }
 
   .nav-user-info {
@@ -105,19 +141,9 @@
   }
 
   .nav-dropdown-menu {
-    width: 100%;  /* Hacer que el dropdown ocupe el 100% del ancho */
+    width: 100%; /* Hacer que el dropdown ocupe el 100% del ancho */
     right: 0;
     margin-top: 8px;
-  }
-
-  /* Botón de hamburguesa */
-  .nav-navbar-responsive .sidebar-toggle-btn {
-    display: block;
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    margin-right: 15px;
   }
 
   .nav-user-section {

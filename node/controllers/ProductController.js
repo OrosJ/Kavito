@@ -7,14 +7,8 @@ import fs from "fs";
 // Obtener la ruta del directorio raíz del proyecto
 const rootDir = path.resolve();  // Esto nos da el directorio raíz del proyecto
 
-// Verificar la ruta base del proyecto
-//console.log('Ruta base del proyecto:', rootDir);
-
 // Definir la carpeta de uploads correctamente desde el directorio raíz
 const uploadDir = path.join(rootDir, 'uploads');
-
-// Imprimir la ruta de uploads para depuración
-//console.log('Ruta de uploads:', uploadDir);
 
 // Comprobar si el directorio de subida existe, si no, crearlo
 if (!fs.existsSync(uploadDir)) {

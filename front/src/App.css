@@ -11,24 +11,54 @@ body {
   flex-grow: 1;
 }
 
-.content {
-  margin-left: 260px; /* Mantener el margen para el sidebar más ancho */
-  padding-top: calc(60px + 40px); /* Reducir el espacio para el Navbar */
-  background-color: rgb(146, 21, 21); /* Fondo rojo */  
-  width: calc(100% - 280px - 0px); /* Ancho restante después del sidebar y el margen a la derecha */
-  min-height: calc(100vh - 110px); /* Altura total de la pantalla menos el espacio para el navbar y footer */
-  padding: 20px; /* Espaciado interno */
-  box-sizing: border-box; /* Asegura que el padding no afecte el cálculo del ancho */
-  margin-top: 80px; /* Opcional: un poco de margen superior para separar del borde del navbar */
+.with-sidebar {
+  margin-left: 260px;
+  padding-top: calc(60px + 40px); /* Espacio para el Navbar */
+  background-color: rgb(146, 21, 21);  
+  width: calc(100% - 280px - 0px); 
+  min-height: calc(100vh - 110px); 
+  padding: 20px;
+  box-sizing: border-box; 
+  margin-top: 80px; 
 }
 
-footer {
-  margin-top: auto;
+.full-screen {
+  margin: 0; /* Sin márgenes */
+  padding: 0; /* Sin espaciado */
+  background-color: rgb(146, 21, 21); /* Mismo fondo */
+  width: 100%; /* Ocupa toda la pantalla */
+  height: 100vh; /* Altura total de la pantalla */
+  display: flex; /* Centrar login */
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+/* Sidebar dinámico */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 260px;
+  height: 100%;
+  background-color: #333; /* Fondo oscuro */
+  color: white;
+  padding: 20px;
+  transform: translateX(-100%); /* Oculto inicialmente */
+  transition: transform 0.3s ease; /* Transición suave */
+}
+
+.sidebar.show {
+  transform: translateX(0); /* Mostrar Sidebar */
 }
 
 @media (max-width: 768px) {
-  .content {
-    margin-left: 0; /* Elimina margen del sidebar */
-    width: 100%; /* Ocupa todo el ancho */
+  .with-sidebar {
+    margin-left: 0;
+    width: 100%;
+  }
+  .sidebar {
+    width: 100%; /* Sidebar ocupa todo el ancho */
+    height: auto; /* Ajustar altura */
   }
 }

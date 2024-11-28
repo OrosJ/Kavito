@@ -7,6 +7,7 @@ import userRoutes from "./routes/userRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import clientRoutes from "./routes/clientRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
+import inventoryOutRoutes from "./routes/invoutRoutes.js";
 
 const app = express();
 
@@ -35,6 +36,12 @@ app.use("/users", userRoutes);
 app.use("/auth", authRoutes);
 app.use("/clients", clientRoutes);
 app.use("/categories", categoryRoutes);
+app.use("/invouts", inventoryOutRoutes);
+
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
 
 app.use((req, res, next) => {
   res.setHeader(
