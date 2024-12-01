@@ -12,11 +12,15 @@ import CompCreateProduct from "./product/CreateProducts";
 import CompEditProduct from "./product/EditProducts";
 import CompShowUsers from "./user/ShowUsers";
 import CompCreateUser from "./user/CreateUsers";
+import CompShowClients from "./client/ShowClients.js";
 import CompShowCategories from "./category/ShowCategory";
 import CompCreateCategory from "./category/CreateCategory";
 import CompShowInvOuts from "./invout/ShowOuts.js";
 import CarritoComponent from "./invout/Cart.js";
 import ConfirmarSalida from "./invout/Cart.js";
+import InvOutDetails from "./invout/InvOutDetails.js";
+import CompShowProjects from "./project/ShowProjects";
+import CompCreateProject from "./project/CreateProject";
 import Login from "./auth/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -86,7 +90,7 @@ function App() {
   };
 
   return (
-    <div className="App">
+    <div className={`App ${isAuthenticated ? 'authenticated' : ''}`}>
       {/* Mostrar la barra de navegación solo si el usuario está autenticado */}
       {isAuthenticated && (
         <CompNavbar
@@ -175,6 +179,15 @@ function App() {
           />
           <Route path="/edit-user/:id" element={<CompCreateUser />} />
           <Route
+            path="/clients"
+            element={
+              <ProtectedRoute
+                isAuthenticated={isAuthenticated}
+                element={<CompShowClients />}
+              />
+            }
+          />
+          <Route
             path="/categories"
             element={
               <ProtectedRoute
@@ -219,7 +232,26 @@ function App() {
               />
             }
           />
+          <Route path="/invouts/details/:id" element={<InvOutDetails />} />
           {/* <Route path="*" element={<div>404 - Página no encontrada</div>} /> */}
+          <Route
+            path="/projects"
+            element={
+              <ProtectedRoute
+                isAuthenticated={isAuthenticated}
+                element={<CompShowProjects />}
+              />
+            }
+          />
+          <Route
+            path="/projects/create"
+            element={
+              <ProtectedRoute
+                isAuthenticated={isAuthenticated}
+                element={<CompCreateProject />}
+              />
+            }
+          />
         </Routes>
       </div>
       <Footer />

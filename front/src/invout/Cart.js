@@ -1,19 +1,36 @@
-//Cart.js:
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // Añade esta importación
 import axios from "axios";
-import { jwtDecode } from "jwt-decode";
+import Swal from "sweetalert2";
+
+const mostrarMensaje = (tipo, titulo, texto) => {
+  Swal.fire({
+    icon: tipo, // 'success', 'error', 'warning', 'info'
+    title: titulo,
+    text: texto,
+    timer: tipo === "success" ? 2000 : undefined, // Auto cerrar solo mensajes de éxito
+    showConfirmButton: tipo !== "success",
+    position: "top-end",
+    toast: true,
+    timerProgressBar: true,
+  });
+};
 
 const CarritoComponent = () => {
-  const [productos, setProductos] = useState([]); // Lista de productos disponibles
-  const [carrito, setCarrito] = useState([]); // Productos en el carrito
-  const [mensaje, setMensaje] = useState(""); // Mensaje de error o notificación
+  const navigate = useNavigate();
+  const [productos, setProductos] = useState([]);
+  const [carrito, setCarrito] = useState([]);
+  const [mensaje, setMensaje] = useState("");
+  const [observacion, setObservacion] = useState(""); // Nuevo estado para la observación
+  const [busqueda, setBusqueda] = useState("");
+  const [productosFiltrados, setProductosFiltrados] = useState([]);
 
-  // Cargar productos desde el backend
   useEffect(() => {
     const obtenerProductos = async () => {
       try {
         const response = await axios.get("http://localhost:8000/products");
         setProductos(response.data);
+        setProductosFiltrados(response.data);
       } catch (error) {
         console.error("Error al obtener los productos:", error);
       }
@@ -22,12 +39,30 @@ const CarritoComponent = () => {
     obtenerProductos();
   }, []);
 
-  // Añadir un producto al carrito
+  const getImageUrl = (image) => {
+    if (!image) {
+      return "/placeholder.png"; // imagen por defecto
+    }
+    // Evitar concatenación doble verificando si ya tiene la URL base
+    return image.startsWith("http")
+      ? image
+      : `http://localhost:8000/uploads/${image}`;
+  };
+
+  // Función de búsqueda
+  const filtrarProductos = (texto) => {
+    setBusqueda(texto);
+    const filtrados = productos.filter((producto) =>
+      producto.descripcion.toLowerCase().includes(texto.toLowerCase())
+    );
+    setProductosFiltrados(filtrados);
+  };
+
   const agregarProducto = (producto) => {
     const existeEnCarrito = carrito.find((item) => item.id === producto.id);
 
     if (existeEnCarrito) {
-      setMensaje("El producto ya está en el carrito.");
+      mostrarMensaje("warning", "¡Cuidado!", "El producto ya esta en la lista");
       return;
     }
 
@@ -36,56 +71,63 @@ const CarritoComponent = () => {
       {
         ...producto,
         cantidad: 1,
-        subtotal: parseFloat(producto.precio), // Inicialmente, el subtotal es igual al precio
+        subtotal: parseFloat(producto.precio),
       },
     ]);
-    setMensaje(""); // Limpiar mensaje
+    setMensaje("");
   };
 
-  // Actualizar la cantidad de un producto en el carrito
   const actualizarCantidad = (id, nuevaCantidad) => {
     const producto = productos.find((item) => item.id === id);
     if (!producto) return;
 
-    // Validar que la cantidad no supere el stock
     if (nuevaCantidad > producto.cantidad) {
       setMensaje(`No puedes agregar más de ${producto.cantidad} unidades.`);
       return;
     }
 
-    // Actualizar el carrito
     const nuevoCarrito = carrito.map((item) =>
       item.id === id
         ? {
             ...item,
             cantidad: nuevaCantidad,
-            subtotal: nuevaCantidad * producto.precio, // Recalcular el subtotal
+            subtotal: nuevaCantidad * producto.precio,
           }
         : item
     );
 
     setCarrito(nuevoCarrito);
-    setMensaje(""); // Limpiar mensaje
+    setMensaje("");
   };
 
-  // Eliminar un producto del carrito
   const eliminarProducto = (id) => {
     setCarrito(carrito.filter((item) => item.id !== id));
   };
 
-  // Calcular el total general
   const calcularTotal = () =>
     carrito.reduce((total, item) => total + item.subtotal, 0);
 
-   // Manejar la confirmación de salida
   const ConfirmarSalida = async () => {
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      setMensaje("No estás autenticado. Por favor, inicia sesión.");
+    if (!observacion.trim()) {
+      mostrarMensaje(
+        "warning",
+        "Atención",
+        "Por favor, ingrese una observación para la salida."
+      );
       return;
     }
-    /* const decodedToken = jwtDecode(token); // Decodificar el token para obtener el user_id
-    const userId = decodedToken.user_id; */
+
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      mostrarMensaje(
+        "error",
+        "No autenticado",
+        "Por favor, inicia sesión para continuar."
+      );
+      navigate("/login");
+      return;
+    }
+
     try {
       const response = await axios.post(
         "http://localhost:8000/invouts",
@@ -94,21 +136,55 @@ const CarritoComponent = () => {
             product_id: id,
             cantidad,
           })),
-          obs: "Salida generada",
-          /* user_id: userId, */
+          obs: observacion, // Usar la observación ingresada por el usuario
         },
         {
           headers: {
-            Authorization: `Bearer ${token}`, // Incluir el token en los encabezados
+            Authorization: `Bearer ${token}`,
           },
         }
       );
-      console.log("Salida registrada:", response.data);
-      setCarrito([]); // Limpiar el carrito
+      mostrarMensaje("success", "¡Éxito!", "Salida registrada correctamente");
+      setCarrito([]);
+      setObservacion(""); // Limpiar la observación
       setMensaje("Salida registrada exitosamente.");
+      navigate("/invouts");
     } catch (error) {
-      console.error("Error al registrar la salida:", error);
-      setMensaje("Error al registrar la salida.");
+      Swal.close();
+
+      if (error.response) {
+        switch (error.response.status) {
+          case 403:
+            mostrarMensaje(
+              "error",
+              "Sesión inválida",
+              "Por favor, inicia sesión nuevamente."
+            );
+            localStorage.removeItem("authToken");
+            navigate("/login");
+            break;
+          case 401:
+            mostrarMensaje(
+              "error",
+              "No autorizado",
+              "No tienes permisos para realizar esta acción."
+            );
+            navigate("/login");
+            break;
+          default:
+            mostrarMensaje(
+              "error",
+              "Error",
+              error.response.data.message || "Error al registrar la salida."
+            );
+        }
+      } else {
+        mostrarMensaje(
+          "error",
+          "Error de conexión",
+          "No se pudo conectar con el servidor."
+        );
+      }
     }
   };
 
@@ -121,15 +197,44 @@ const CarritoComponent = () => {
         {/* Lista de productos */}
         <div className="col-md-6">
           <h3>Productos Disponibles</h3>
+          <div className="mb-3">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Buscar productos..."
+              value={busqueda}
+              onChange={(e) => filtrarProductos(e.target.value)}
+            />
+          </div>
+
           <ul className="list-group">
-            {productos.map((producto) => (
+            {productosFiltrados.map((producto) => (
               <li
                 key={producto.id}
                 className="list-group-item d-flex justify-content-between align-items-center"
               >
-                <div>
-                  <strong>{producto.descripcion}</strong> <br />
-                  <small>Stock: {producto.cantidad}</small>
+                <div
+                  className="d-flex align-items-center"
+                  style={{ gap: "1rem" }}
+                >
+                  <img
+                    src={getImageUrl(producto.image)}
+                    alt={producto.descripcion}
+                    style={{
+                      width: "50px",
+                      height: "50px",
+                      objectFit: "cover",
+                      borderRadius: "4px",
+                    }}
+                    onError={(e) => {
+                      e.target.onerror = null; // Previene loop infinito
+                      e.target.src = "/placeholder.png"; // Imagen por defecto si falla la carga
+                    }}
+                  />
+                  <div>
+                    <strong>{producto.descripcion}</strong> <br />
+                    <small>Stock: {producto.cantidad}</small>
+                  </div>
                 </div>
                 <button
                   className="btn btn-primary btn-sm"
@@ -148,62 +253,82 @@ const CarritoComponent = () => {
           {carrito.length === 0 ? (
             <p>No hay productos en el carrito.</p>
           ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th>Cantidad</th>
-                  <th>Subtotal</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {carrito.map((item) => (
-                  <tr key={item.id}>
-                    <td>{item.descripcion}</td>
-                    <td>
-                      <input
-                        type="number"
-                        min="1"
-                        max={productos.find((p) => p.id === item.id)?.cantidad}
-                        value={item.cantidad}
-                        onChange={(e) =>
-                          actualizarCantidad(
-                            item.id,
-                            parseInt(e.target.value, 10) || 1
-                          )
-                        }
-                        className="form-control form-control-sm"
-                      />
-                    </td>
-                    <td>Bs.{item.subtotal.toFixed(2)}</td>
+            <>
+              {/* Campo de observación */}
+              <div className="mb-3">
+                <label htmlFor="observacion" className="form-label">
+                  Descripción de la salida:
+                </label>
+                <textarea
+                  id="observacion"
+                  className="form-control"
+                  value={observacion}
+                  onChange={(e) => setObservacion(e.target.value)}
+                  placeholder="Ingrese una descripción para esta salida"
+                  rows="3"
+                  required
+                />
+              </div>
+
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Subtotal</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {carrito.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.descripcion}</td>
+                      <td>
+                        <input
+                          type="number"
+                          min="1"
+                          max={
+                            productos.find((p) => p.id === item.id)?.cantidad
+                          }
+                          value={item.cantidad}
+                          onChange={(e) =>
+                            actualizarCantidad(
+                              item.id,
+                              parseInt(e.target.value, 10) || 1
+                            )
+                          }
+                          className="form-control form-control-sm"
+                        />
+                      </td>
+                      <td>Bs.{item.subtotal.toFixed(2)}</td>
+                      <td>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => eliminarProducto(item.id)}
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan="2">Total</td>
+                    <td>Bs.{calcularTotal().toFixed(2)}</td>
                     <td>
                       <button
-                        className="btn btn-danger btn-sm"
-                        onClick={() => eliminarProducto(item.id)}
+                        className="btn btn-success"
+                        onClick={ConfirmarSalida}
+                        disabled={carrito.length === 0 || !observacion.trim()}
                       >
-                        Eliminar
+                        Confirmar Salida
                       </button>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan="2">Total</td>
-                  <td>Bs.{calcularTotal().toFixed(2)}</td>
-                  <td>
-                    <button
-                      className="btn btn-success"
-                      onClick={ConfirmarSalida}
-                      disabled={carrito.length === 0}
-                    >
-                      Confirmar Salida
-                    </button>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                </tfoot>
+              </table>
+            </>
           )}
         </div>
       </div>

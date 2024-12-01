@@ -1,8 +1,22 @@
 import axios from 'axios';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom'; // Para redirigir después de crear 
+import Swal from "sweetalert2";
 
 const URI = 'http://localhost:8000/categories/register'; // Ruta para registrar 
+
+const mostrarMensaje = (tipo, titulo, texto) => {
+  Swal.fire({
+    icon: tipo,
+    title: titulo,
+    text: texto,
+    position: "top-end",
+    toast: true,
+    timer: tipo === "success" ? 2000 : undefined,
+    timerProgressBar: true,
+    showConfirmButton: tipo !== "success",
+  });
+};
 
 const CompCreateCategory = () => {
   const [categoryData, setCategoryData] = useState({
@@ -24,11 +38,10 @@ const CompCreateCategory = () => {
     
     try {
       const res = await axios.post(URI, categoryData);
-      alert('Categoria creada exitosamente');
+      mostrarMensaje('success', 'Exito', 'Categoria creada correctamente');
       navigate('/categories');
     } catch (error) {
-      console.error('Hubo un error al crear la categoria:', error);
-      alert('Error al crear la categoria');
+      mostrarMensaje('error', 'Error', 'Error al crear la categoria');
     }
   };
 

@@ -4,6 +4,11 @@ import ProductModel from "./ProductModel.js";
 import User from "./UserModel.js";
 
 const InventoryOutModel = db.define("invouts", {
+  codigo: {
+    type: DataTypes.STRING(15),
+    allowNull: false,
+    unique: true
+  },
   createdAt: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,
@@ -11,6 +16,18 @@ const InventoryOutModel = db.define("invouts", {
   obs: {
     type: DataTypes.STRING,
     allowNull: true,
+  },
+  total: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0.00,
+    validate: {
+      min: 0
+    }
+  },
+  user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false
   }
 });
 
@@ -18,7 +35,18 @@ const InventoryOutModel = db.define("invouts", {
 export const InventoryOutProduct = db.define("inventory_out_products", {
   cantidad: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: false,
+    validate: {
+      min: 1
+    }
+  },
+  subtotal: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0.00,
+    validate: {
+      min: 0
+    }
   }
 });
 

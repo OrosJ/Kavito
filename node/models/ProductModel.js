@@ -16,7 +16,7 @@ const ProductModel = db.define("products", {
   },
   cantidad: { type: DataTypes.NUMBER },
   precio: {
-    type: DataTypes.DECIMAL(10, 0),
+    type: DataTypes.DECIMAL(10, 2),
     validate: {
       isDecimal: true, // Validación para asegurarte de que sea decimal
       min: 0,

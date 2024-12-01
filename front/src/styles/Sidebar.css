@@ -1,65 +1,72 @@
 /* Sidebar flotante con más margen y bordes redondeados */
 .sidebar {
-    position: fixed;
-    top: 20px;  /* Desplazar el sidebar hacia abajo para que no se pegue al top */
-    left: 240px;  /* Desplazar más el sidebar hacia la derecha */
-    width: 230px;  /* Aumentar el ancho del sidebar */
-    height: calc(100vh - 40px);  /* Altura completa menos el espacio del navbar */
-    background-color: #343a40;  /* Fondo oscuro */
-    color: white;
-    padding-top: 20px;
-    border-top-right-radius: 10px;
-    border-top-left-radius: 10px;
-    border-bottom-right-radius: 10px;
-    border-bottom-left-radius: 10px;
-    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.3);  /* Efecto flotante */
-    z-index: 1000;  /* Asegurarnos de que se vea por encima del contenido */
-    transition: left 0.3s ease;
-  }
-
-  .sidebar.show {
-    left: 20px; /* Sidebar visible */
-}  
-  .sidebar-header {
-    text-align: center;
-    margin-bottom: 20px;
-  }
-  
-  .sidebar-menu {
-    list-style-type: none;
-    padding-left: 0;
-  }
-  
-  .sidebar-menu li {
-    margin: 15px 0;
-  }
-  
-  .sidebar-menu a {
-    color: white;
-    text-decoration: none;
-    display: block;
-    padding: 10px;
-    border-radius: 5px;
-    transition: background-color 0.3s;
-    font-size: 16px;
-  }
-  
-  .sidebar-menu a:hover {
-    background-color: #495057;
-  }
-  
-  .sidebar-menu a svg {
-    margin-right: 10px;
-  }
-  
-  .sidebar-close-btn {
-    display: none; /* Oculto por defecto */
+  position: fixed;
+  top: 20px; /* Desplazar el sidebar hacia abajo para que no se pegue al top */
+  left: 20px; /* Desplazar más el sidebar hacia la derecha */
+  right: 20px;
+  width: 200px; /* Aumentar el ancho del sidebar */
+  height: calc(100vh - 40px); /* Altura completa menos el espacio del navbar */
+  background-color: #343a40; /* Fondo oscuro */
+  color: white;
+  padding-top: 10px;
+  border-radius: 20px;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.3); /* Efecto flotante */
+  z-index: 1000; /* Asegurarnos de que se vea por encima del contenido */
+  transition: left 0.3s ease;
 }
-  @media (max-width: 768px) {
-    .sidebar-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+
+.sidebar.show {
+  left: 20px; /* Sidebar visible */
+}
+.sidebar-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.sidebar-menu li.active {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-left: 4px solid #2993eb;
+}
+
+.sidebar-menu li.active a {
+  color: #fff;
+  font-weight: 600;
+  padding-left: 16px; /* Compensar el borde izquierdo */
+}
+
+.sidebar-menu li.active:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.sidebar-menu a {
+  color: white;
+  text-decoration: none;
+  display: block;
+  padding: 10px;
+  border-radius: 5px;
+  transition: background-color 0.3s;
+  font-size: 16px;
+}
+
+.sidebar-menu a:hover {
+  background-color: #495057;
+}
+
+.sidebar-menu a svg {
+  margin-right: 10px;
+}
+
+.sidebar-close-btn {
+  display: none; /* Oculto por defecto */
+}
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+  .sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
   .sidebar-close-btn {
     display: block;
@@ -69,21 +76,21 @@
     font-size: 24px;
     cursor: pointer;
     padding: 0;
-}
+  }
 
-.mobile-only {
-  display: block !important;
-}
-    .sidebar {
-        left: -100%; /* Fuera de la pantalla por defecto */
-        transition: transform 0.3s ease; /* Suave transición */
-    }
+  .mobile-only {
+    display: block !important;
+  }
+  .sidebar {
+    left: -100%; /* Fuera de la pantalla por defecto */
+    transition: transform 0.3s ease; /* Suave transición */
+  }
 
-    .sidebar.show {
-      left: 0;
-    }
+  .sidebar.show {
+    transform: translateX(0);
+  }
 
-    .content.with-sidebar {
-      margin-left: 0;  /* No margin on mobile */
-    }
+  .content.with-sidebar {
+    margin-left: 0; /* No margin on mobile */
+  }
 }

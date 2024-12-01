@@ -1,128 +1,83 @@
-import axios from "axios";
-import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import axios from 'axios';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import ProductForm from './ProductForm';
+import Swal from "sweetalert2";
 
-const URI = "http://localhost:8000/products/";
 
-const CompEditProduct = () => {
-  const { id } = useParams(); // Obtener el id del producto de la URL
-  const [descripcion, setDescripcion] = useState("");
-  const [cantidad, setCantidad] = useState("");
-  const [precio, setPrecio] = useState("");
-  const [imagen, setImagen] = useState(null);
-  const [imagenActual, setImagenActual] = useState("");
+const URI = 'http://localhost:8000/products/';
+
+const mostrarMensaje = (tipo, titulo, texto) => {
+  Swal.fire({
+    icon: tipo,
+    title: titulo,
+    text: texto,
+    position: "top-end",
+    toast: true,
+    timer: tipo === "success" ? 2000 : undefined,
+    timerProgressBar: true,
+    showConfirmButton: tipo !== "success",
+  });
+};
+
+
+const EditProduct = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
-
-  const updateProduct = async (e) => {
-    e.preventDefault();
-
-    const formData = new FormData();
-    formData.append("descripcion", descripcion);
-    formData.append("cantidad", cantidad);
-    formData.append("precio", precio);
-    if (imagen) {
-      formData.append("image", imagen); // Subir la nueva imagen
-    }
-
-    try {
-      await axios.put(URI + id, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      navigate("/products");
-    } catch (error) {
-      console.error("Error al actualizar el producto", error);
-    }
-  };
+  const [initialData, setInitialData] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const getProductById = async () => {
+    const fetchProduct = async () => {
       try {
-        const res = await axios.get(URI + id);
-        setDescripcion(res.data.descripcion);
-        setCantidad(res.data.cantidad);
-        setPrecio(res.data.precio);
-        setImagenActual(res.data.imagen); // Guardar la URL de la imagen actual
+        const res = await axios.get(`${URI}${id}`);
+        setInitialData(res.data);
       } catch (error) {
-        console.error("Error al obtener el producto", error);
+        setError('Error al cargar el producto');
+        console.error("Error al obtener el producto:", error);
       }
     };
-
-    getProductById();
+    fetchProduct();
   }, [id]);
 
-  // Manejar el cambio de imagen
-  const handleImageChange = (e) => {
-    setImagen(e.target.files[0]);
+  const handleSubmit = async (formData) => {
+    try {
+      await axios.put(`${URI}${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      mostrarMensaje('success', 'Exito', 'Producto editado correctamente');
+      navigate('/products');
+    } catch (error) {
+      setError('Error al actualizar el producto');
+      mostrarMensaje('error', 'Error', 'No se pudo editar el producto');
+    }
   };
 
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mt-4">
-      <h1>Editar Producto</h1>
-      <form onSubmit={updateProduct}>
-        <div className="mb-3">
-          <label className="form-label">Descripción del producto:</label>
-          <textarea
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            type="text"
-            className="form-control"
-            placeholder="Escribe la descripción del producto"
-          />
+    <div className="container mx-auto px-4 py-8">
+      {initialData ? (
+        <ProductForm 
+          initialData={initialData}
+          onSubmit={handleSubmit}
+          isEditing={true}
+        />
+      ) : (
+        <div className="flex justify-center items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
         </div>
-
-        <div className="mb-3">
-          <label className="form-label">Cantidad:</label>
-          <input
-            type="number"
-            value={cantidad}
-            onChange={(e) => setCantidad(e.target.value)}
-            className="form-control"
-            placeholder="Cantidad del producto"
-          />
-        </div>
-
-        <div className="mb-3">
-          <label className="form-label">Precio:</label>
-          <input
-            type="number"
-            value={precio}
-            onChange={(e) => setPrecio(e.target.value)}
-            className="form-control"
-            placeholder="Precio del producto"
-            step="0.01"
-          />
-        </div>
-
-        {/* Mostrar la imagen actual si existe */}
-        {imagenActual && (
-          <div className="mb-3">
-            <label>Imagen Actual:</label>
-            <img
-              src={`http://localhost:8000/uploads/${imagenActual}`}
-              alt="Imagen Actual"
-              width="150"
-            />
-          </div>
-        )}
-
-        {/* Campo para seleccionar una nueva imagen */}
-        <div className="mb-3">
-          <label>Seleccionar nueva imagen:</label>
-          <input
-            type="file"
-            onChange={handleImageChange}
-            className="form-control"
-          />
-        </div>
-
-        <button type="submit" className="btn btn-success">
-          Actualizar Producto
-        </button>
-      </form>
+      )}
     </div>
   );
 };
 
-export default CompEditProduct;
+export default EditProduct;

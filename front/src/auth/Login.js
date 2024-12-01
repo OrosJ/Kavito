@@ -1,19 +1,41 @@
-import { useState } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 import "../styles/Login.css";
 
+const mostrarMensaje = (tipo, titulo, texto) => {
+  Swal.fire({
+    icon: tipo,
+    title: titulo,
+    text: texto,
+    position: "top-end",
+    toast: true,
+    timer: tipo === "success" ? 2000 : undefined,
+    timerProgressBar: true,
+    showConfirmButton: tipo !== "success",
+  });
+};
+
 const Login = ({ setIsAuthenticated }) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      const response = await axios.post('http://localhost:8000/auth/login', {
+      Swal.fire({
+        title: "Iniciando sesión...",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      const response = await axios.post("http://localhost:8000/auth/login", {
         username,
         password,
       });
@@ -21,17 +43,16 @@ const Login = ({ setIsAuthenticated }) => {
       const { token } = response.data;
 
       // Guardar el token en el localStorage
-      localStorage.setItem('authToken', token);
-      //localStorage.setItem('userRole', user.role);
-
+      localStorage.setItem("authToken", token);
       // Actualizar el estado de autenticación en App.js
       setIsAuthenticated(true);
+      Swal.close(); // Cerrar loading
+      mostrarMensaje("success", "¡Bienvenido!", "Inicio de sesión exitoso");
 
       // Redirigir a la página de inicio
-      navigate('/');
-
+      navigate("/");
     } catch (error) {
-      setError('Error al iniciar sesión. Verifica tus credenciales.');
+      mostrarMensaje('error', 'Error', 'Credenciales incorrectas. Por favor, verifica tus datos.');
     }
   };
 

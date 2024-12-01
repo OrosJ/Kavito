@@ -108,12 +108,6 @@ export const createProduct = async (req, res) => {
 export const updateProduct = async (req, res) => {
   const { descripcion, cantidad, precio, categoria } = req.body;
 
-  let image = null;
-
-  if (req.file) {
-    image = req.file.filename; // Guardar el nuevo archivo de la imagen
-  }
-
   try {
     // Verificar que la categoría exista si se pasa una nueva
     if (categoria) {
@@ -125,15 +119,22 @@ export const updateProduct = async (req, res) => {
       }
     }
 
+    // Preparar el objeto de actualización
+    const updateData = {
+      descripcion,
+      cantidad,
+      precio,
+      categoria,
+    };
+
+    // Solo actualizar la imagen si se proporciona una nueva
+    if (req.file) {
+      updateData.image = req.file.filename;
+    }
+
     // Actualizar el producto
     await ProductModel.update(
-      {
-        descripcion,
-        cantidad,
-        precio,
-        categoria, // Este campo puede cambiarse, ya que la categoría es una FK
-        image,
-      },
+      updateData,
       {
         where: { id: req.params.id },
       }

@@ -1,17 +1,33 @@
-footer {
-    margin-top: auto;  /* Hace que el footer se coloque al final */
-    margin-left: 260px; /* Desplazar el footer a la derecha para respetar el espacio del sidebar */
-    width: calc(100% - 280px - 0px); /* Ajustar el ancho del footer para que respete el espacio del sidebar */
-    padding: 10px  20px;
-    background-color: #f1f1f1;
-    text-align: center;
-    color: #333;
-  }
+.footer {
+  padding: 10px;  /* Reducido de 20px */
+  background-color: white;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  position: relative;
+  z-index: 900;
+  height: 40px;  /* Altura fija para hacerlo más delgado */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-  @media (max-width: 768px) {
-    footer {
-      margin-left: 0;  /* Eliminar margen izquierdo en pantallas pequeñas */
-      width: 100%;  /* Hacer que el footer ocupe todo el ancho de la pantalla */
-      padding: 10px 15px;
-    }
+/* Cuando el usuario está autenticado */
+.App.authenticated .footer {
+  margin:  20px 20px 20px 240px;  /* Margen igual en todos los lados */
+  border-radius: 8px;
+}
+
+/* Cuando el usuario no está autenticado */
+.App:not(.authenticated) .footer {
+  width: 100%;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .App.authenticated .footer {
+    margin: 10px;
   }
+}

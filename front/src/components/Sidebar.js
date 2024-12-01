@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   FaHome,
   FaUsers,
@@ -12,6 +12,10 @@ import {
 import "../styles/Sidebar.css";
 
 const Sidebar = ({ isSidebarOpen, onClose }) => {
+  const location = useLocation();
+  const isActive = (path) => {
+    return location.pathname === path;
+  };
   return (
     <div className={`sidebar ${isSidebarOpen ? "show" : ""}`}>
       <div className="sidebar-header">
@@ -21,32 +25,37 @@ const Sidebar = ({ isSidebarOpen, onClose }) => {
         </button>
       </div>
       <ul className="sidebar-menu">
-        <li>
+        <li className={isActive('/') ? 'active' : ''}>
           <Link to="/">
             <FaHome /> Inicio
           </Link>
         </li>
-        <li>
+        <li className={isActive('/products') ? 'active' : ''}>
           <Link to="/products">
             <FaBox /> Productos
           </Link>
         </li>
-        <li>
+        <li className={isActive('/users') ? 'active' : ''}>
           <Link to="/users">
             <FaUsers className="me-2" /> Usuarios
           </Link>
         </li>
-        <li>
+        <li className={isActive('/clients') ? 'active' : ''}>
+          <Link to="/clients">
+            <FaUsers className="me-2" /> Clientes
+          </Link>
+        </li>
+        <li className={isActive('/categories') ? 'active' : ''}>
           <Link to="/categories">
             <FaCogs /> Categorias
           </Link>
         </li>
-        <li>
-          <Link to="/">
+        <li className={isActive('/projects') ? 'active' : ''}>
+          <Link to="/projects">
             <FaProjectDiagram /> Proyectos
           </Link>
         </li>
-        <li>
+        <li className={isActive('/invouts') ? 'active' : ''}>
           <Link to="/invouts">
             <FaTasks/> Salidas
           </Link>

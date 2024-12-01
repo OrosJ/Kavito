@@ -8,6 +8,8 @@ import authRoutes from "./routes/authRoutes.js";
 import clientRoutes from "./routes/clientRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import inventoryOutRoutes from "./routes/invoutRoutes.js";
+import projectRoutes from "./routes/projectRoutes.js"; 
+import statsRoutes from './routes/statsRoutes.js';
 
 const app = express();
 
@@ -27,9 +29,6 @@ const __dirname = path.resolve();
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Ruta para servir archivos estáticos
-//console.log('Ruta estática configurada:', path.join(__dirname, 'uploads'));
-
 // Rutas principales
 app.use("/products", productRoutes);
 app.use("/users", userRoutes);
@@ -37,6 +36,8 @@ app.use("/auth", authRoutes);
 app.use("/clients", clientRoutes);
 app.use("/categories", categoryRoutes);
 app.use("/invouts", inventoryOutRoutes);
+app.use("/projects", projectRoutes);
+app.use("/stats", statsRoutes);
 
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);

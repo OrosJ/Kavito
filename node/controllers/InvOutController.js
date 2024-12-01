@@ -1,8 +1,11 @@
 //InvOutController.js:
-import InventoryOutModel, { InventoryOutProduct } from "../models/InvOutModel.js";
+import InventoryOutModel, {
+  InventoryOutProduct,
+} from "../models/InvOutModel.js";
 import ProductModel from "../models/ProductModel.js";
 import UserModel from "../models/UserModel.js";
 import db from "../database/db.js";
+import { Op } from "sequelize";
 
 export const createInventoryOut = async (req, res) => {
   const { productos, obs } = req.body;
@@ -18,10 +21,35 @@ export const createInventoryOut = async (req, res) => {
   const transaction = await db.transaction();
 
   try {
+    const fecha = new Date();
+    const year = fecha.getFullYear().toString().substr(-2);
+    const month = (fecha.getMonth() + 1).toString().padStart(2, "0");
+    const day = fecha.getDate().toString().padStart(2, "0");
+
+    const ultimaSalida = await InventoryOutModel.findOne({
+      where: {
+        createdAt: {
+          [Op.gte]: new Date(fecha.setHours(0, 0, 0, 0)),
+        },
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    let secuencial = "001";
+    if (ultimaSalida && ultimaSalida.codigo) {
+      const ultimoSecuencial = parseInt(ultimaSalida.codigo.slice(-3)) + 1;
+      secuencial = ultimoSecuencial.toString().padStart(3, "0");
+    }
+
+    const codigo = `S${year}${month}${day}${secuencial}`;
+    let total = 0;
+
     const inventoryOut = await InventoryOutModel.create(
       {
+        codigo,
         user_id,
         obs,
+        total: 0,
       },
       { transaction }
     );
@@ -53,6 +81,10 @@ export const createInventoryOut = async (req, res) => {
         );
       }
 
+      // Calcular subtotal
+      const subtotal = parseFloat(product.precio) * cantidad;
+      total += subtotal;
+
       // Actualizar inventario del producto
       await product.decrement("cantidad", {
         by: cantidad,
@@ -65,10 +97,13 @@ export const createInventoryOut = async (req, res) => {
           invout_id: inventoryOut.id,
           product_id: product_id,
           cantidad: cantidad,
+          subtotal: subtotal
         },
         { transaction }
       );
     }
+
+    await inventoryOut.update({ total }, { transaction });
 
     // Confirmar la transacción
     await transaction.commit();
@@ -78,7 +113,8 @@ export const createInventoryOut = async (req, res) => {
         {
           model: ProductModel,
           as: "productos",
-          through: { attributes: ["cantidad"] },
+          through: { attributes: ["cantidad", "subtotal"] },
+          attributes: ["descripcion", "id", "precio"]
         },
         {
           model: UserModel,
@@ -112,9 +148,9 @@ export const getAllInventoryOuts = async (req, res) => {
           model: ProductModel,
           as: "productos",
           through: {
-            attributes: ["cantidad"],
+            attributes: ["cantidad","subtotal"],
           },
-          attributes: ["descripcion", "id"],
+          attributes: ["descripcion", "id", "precio"],
         },
       ],
       order: [["createdAt", "DESC"]],
@@ -129,6 +165,8 @@ export const getAllInventoryOuts = async (req, res) => {
           id: producto.id,
           descripcion: producto.descripcion,
           cantidad: producto.inventory_out_products.cantidad, // Acceder a la cantidad desde la tabla intermedia
+          precio: producto.precio,
+          subtotal: producto.inventory_out_products.subtotal
         })),
       };
     });
@@ -194,8 +232,23 @@ export const getInventoryOutById = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Buscar el registro de salida por ID
-    const inventoryOut = await InventoryOutModel.findByPk(id);
+    // Buscar el registro de salida por ID incluyendo productos y usuario
+    const inventoryOut = await InventoryOutModel.findByPk(id, {
+      include: [
+        {
+          model: UserModel,
+          attributes: ["username", "email"],
+        },
+        {
+          model: ProductModel,
+          as: "productos",
+          through: {
+            attributes: ["cantidad", "subtotal"],
+          },
+          attributes: ["descripcion", "id", "precio"],
+        },
+      ],
+    });
 
     if (!inventoryOut) {
       return res
@@ -203,7 +256,20 @@ export const getInventoryOutById = async (req, res) => {
         .json({ message: "Registro de salida no encontrado" });
     }
 
-    res.json(inventoryOut); // Retornar el registro de salida
+    // Formatear la respuesta
+    const formattedSalida = {
+      ...inventoryOut.toJSON(),
+      usuario: inventoryOut.user?.username || "Sin usuario",
+      productos: inventoryOut.productos.map((producto) => ({
+        id: producto.id,
+        descripcion: producto.descripcion,
+        cantidad: producto.inventory_out_products.cantidad,
+        precio: producto.precio,
+        subtotal: producto.inventory_out_products.subtotal
+      })),
+    };
+
+    res.json(formattedSalida);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
