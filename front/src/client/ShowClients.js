@@ -5,8 +5,22 @@ import { MaterialReactTable } from 'material-react-table';
 import { Button, IconButton, Tooltip, Box } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import Swal from "sweetalert2";
 
 const URI = 'http://localhost:8000/clients/';
+
+const mostrarMensaje = (tipo, titulo, texto) => {
+  Swal.fire({
+    icon: tipo,
+    title: titulo,
+    text: texto,
+    position: "top-end",
+    toast: true,
+    timer: tipo === "success" ? 2000 : undefined,
+    timerProgressBar: true,
+    showConfirmButton: tipo !== "success",
+  });
+};
 
 const CompShowClients = () => {
   const [clients, setClients] = useState([]);
@@ -37,12 +51,25 @@ const CompShowClients = () => {
   };
 
   const deleteClient = async (id) => {
-    if (window.confirm('¿Estás seguro de eliminar este cliente?')) {
+    const result = await Swal.fire({
+      title: '¿Estás seguro?',
+      text: "¡Este cliente será eliminado permanentemente!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: '¡Sí, eliminar!',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (result.isConfirmed) {
       try {
         await axios.delete(`${URI}${id}`);
         getClients();
+        mostrarMensaje('success', '¡Eliminado!', 'El cliente ha sido eliminado correctamente.');
       } catch (error) {
         console.error('Error al eliminar el cliente:', error);
+        mostrarMensaje('error', '¡Error!', 'No se pudo eliminar el cliente.');
       }
     }
   };
@@ -72,7 +99,7 @@ const CompShowClients = () => {
       <h2>Clientes</h2>
       <div className="row">
         <div className="col">
-          <Link to="/create-user" style={{ textDecoration: 'none' }}>
+          <Link to="/create-client" style={{ textDecoration: 'none' }}>
             <Button
               variant="contained"
               color="primary"

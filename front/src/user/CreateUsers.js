@@ -1,6 +1,20 @@
 import axios from 'axios';
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import Swal from "sweetalert2";
+
+const mostrarMensaje = (tipo, titulo, texto) => {
+  Swal.fire({
+    icon: tipo,
+    title: titulo,
+    text: texto,
+    position: "top-end",
+    toast: true,
+    timer: tipo === "success" ? 2000 : undefined,
+    timerProgressBar: true,
+    showConfirmButton: tipo !== "success",
+  });
+};
 
 const URI = 'http://localhost:8000/users/'; // Ruta para crear y editar usuarios
 
@@ -46,11 +60,11 @@ const CompCreateUser = () => {
       if (id) {
         // Editar usuario existente (PUT)
         await axios.put(`${URI}${id}`, userData);
-        alert('Usuario actualizado exitosamente');
+        mostrarMensaje('success', '¡Editado!', 'Datos de usuario actualizados correctamente.');
       } else {
         // Crear nuevo usuario (POST)
         await axios.post(`${URI}register`, userData);
-        alert('Usuario creado exitosamente');
+        mostrarMensaje('success', '¡Creado!', 'Usuario creado correctamente.');
       }
       navigate('/users'); // Redirigir a la lista de usuarios
     } catch (error) {

@@ -39,17 +39,31 @@ export const getAllProducts = async (req, res) => {
           attributes: ["categoryname"], // Solo seleccionamos el campo `categoryname`
         },
       ],
-    });
-
-    const updatedProducts = products.map((product) => {
-      if (product.image) {
-        product.image = `http://localhost:8000/uploads/${product.image}`;
+      attributes: {
+        include: [
+          'id',
+          'descripcion',
+          'cantidad',
+          'cantidad_reservada',
+          'precio',
+          'image'
+        ]
       }
-      return product;
     });
 
-    res.json(updatedProducts);
+    // Combinar ambas transformaciones
+    const formattedProducts = products.map(product => {
+      const productJSON = product.toJSON();
+      return {
+        ...productJSON,
+        cantidad_disponible: product.cantidad - (product.cantidad_reservada || 0),
+        image: product.image ? `http://localhost:8000/uploads/${product.image}` : null
+      };
+    });
+
+    res.status(200).json(formattedProducts);
   } catch (error) {
+    console.error("Error al obtener productos:", error);
     res.json({ message: error.message });
   }
 };
@@ -75,11 +89,11 @@ export const createProduct = async (req, res) => {
 
   let image = null;
   if (req.file) {
-    image = req.file.filename; // Guardar el nombre del archivo de la imagen
+    image = req.file.filename; 
   }
 
   try {
-    // Verificar que la categoría exista
+    
     const category = await CategoryModel.findByPk(categoria);
     if (!category) {
       return res.status(400).json({
@@ -87,7 +101,6 @@ export const createProduct = async (req, res) => {
       });
     }
 
-    // Crear el producto asociado a la categoría
     const newProduct = await ProductModel.create({
       descripcion,
       cantidad,

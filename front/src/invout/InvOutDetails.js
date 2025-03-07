@@ -22,6 +22,12 @@ const InvOutDetails = () => {
   const [invOut, setInvOut] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const formatNumber = (value) => {
+    if (value === null || value === undefined) return "0.00";
+    const number = typeof value === "string" ? parseFloat(value) : value;
+    return number.toFixed(2);
+  };
+
   const getInvOutDetails = useCallback(async () => {
     try {
       const token = localStorage.getItem("authToken");
@@ -48,53 +54,50 @@ const InvOutDetails = () => {
 
     const addHeader = (doc) => {
       doc.setFillColor(63, 81, 181);
-      doc.rect(0, 0, doc.internal.pageSize.width, 65, "F");
+      doc.rect(0, 0, doc.internal.pageSize.width, 50, "F");
 
       doc.setDrawColor(255, 255, 255);
       doc.setLineWidth(0.5);
-      doc.rect(15, 15, 40, 40, "S");
-      doc.setFontSize(8);
-      doc.setTextColor(255, 255, 255);
-      doc.text("(Logo)", 27, 35);
+      doc.rect(15, 5, 40, 40, "S");
+      doc.addImage('/images/logo.png', 'PNG', 15, 5, 40, 40);
 
       doc.setFontSize(22);
       doc.setTextColor(255, 255, 255);
-      doc.text("FERRETERÍA KAVITO", 60, 30);
+      doc.text("FERRETERÍA KAVITO", 60, 25);
 
       doc.setFontSize(10);
-      doc.text("Dirección: [Tu dirección aquí]", 60, 40);
-      doc.text("Teléfono: [Tu teléfono]", 60, 45);
-      doc.text("Email: [Tu email]", 60, 50);
+      doc.text("Dirección: Calle Boqueron N°1355 entre Colombia y Almirante Grau", 60, 35);
+      doc.text("Teléfono: 76788361", 60, 40);
+      doc.text("Email: ", 60, 45);
 
       doc.setDrawColor(255, 255, 255);
       doc.setLineWidth(0.5);
-      doc.line(15, 60, 195, 60);
+      doc.line(15, 48, 195, 48);
     };
 
     // Título y detalles básicos
     doc.setFillColor(240, 240, 240);
-    doc.rect(0, 65, doc.internal.pageSize.width, 20, "F");
+    doc.rect(0, 50, doc.internal.pageSize.width, 20, "F");
     doc.setTextColor(63, 81, 181);
     doc.setFontSize(16);
-    doc.text("COMPROBANTE DE SALIDA", doc.internal.pageSize.width / 2, 78, {
+    doc.text("COMPROBANTE DE SALIDA", doc.internal.pageSize.width / 2, 63, {
       align: "center",
     });
 
     // Información de la salida
     doc.setTextColor(80, 80, 80);
     doc.setFontSize(10);
-    doc.text(`Código de Salida: ${invOut.codigo}`, 15, 95);
-    doc.text(`N° de Salida: ${invOut.id}`, 15, 95);
-    doc.text(`Fecha: ${new Date(invOut.createdAt).toLocaleString()}`, 15, 102);
-    doc.text(`Usuario: ${invOut.usuario}`, 15, 109);
+    doc.text(`Código de Salida: ${invOut.codigo}`, 15, 75);
+    doc.text(`Fecha: ${new Date(invOut.createdAt).toLocaleString()}`, 15, 82);
+    doc.text(`Usuario: ${invOut.usuario}`, 15, 89);
 
     // Observaciones
     doc.setFontSize(11);
     doc.setTextColor(63, 81, 181);
-    doc.text("Observaciones:", 15, 123);
+    doc.text("Observaciones:", 15, 103);
     doc.setTextColor(80, 80, 80);
     doc.setFontSize(10);
-    doc.text(invOut.obs, 15, 130);
+    doc.text(invOut.obs, 15, 110);
 
     // Tabla de productos
     const tableRows = invOut.productos
@@ -102,16 +105,16 @@ const InvOutDetails = () => {
           index + 1,
           producto.descripcion,
           producto.cantidad,
-          `Bs. ${producto.precio.toFixed(2)}`,
-          `Bs. ${producto.subtotal.toFixed(2)}`,
+          `Bs. ${formatNumber(producto.precio)}`,
+          `Bs. ${formatNumber(producto.subtotal)}`,
         ])
       : [];
 
     autoTable(doc, {
-      head: [["#", "Producto", "Cantidad",'Precio Unit.', 'Subtotal']],
+      head: [["#", "Producto", "Cantidad", "Precio Unit.", "Subtotal"]],
       body: tableRows,
-      foot: [['', '', '', 'Total:', `Bs. ${invOut.total.toFixed(2)}`]],
-      startY: 140,
+      foot: [["", "", "", "Total:", `Bs. ${formatNumber(invOut.total)}`]],
+      startY: 120,
       styles: {
         fontSize: 9,
         cellPadding: 3,
@@ -245,14 +248,14 @@ const InvOutDetails = () => {
                             color="primary"
                             sx={{ ml: 1 }}
                           >
-                            Bs. {producto.subtotal.toFixed(2)}
+                            Bs. {formatNumber(producto.subtotal)}
                           </Typography>
                         </Typography>
                       </Box>
                     ))}
                     <Divider sx={{ my: 2 }} />
-                    <Typography variant="h6" align="right">
-                      Total: Bs. {invOut.total.toFixed(2)}
+                    <Typography component="span" color="primary" sx={{ ml: 1 }}>
+                      TOTAL: Bs. {formatNumber(invOut.total)}
                     </Typography>
                   </>
                 ) : (

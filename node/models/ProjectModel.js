@@ -2,6 +2,7 @@ import { DataTypes } from "sequelize";
 import db from "../database/db.js";
 import ProductModel from "./ProductModel.js";
 import ClientModel from "./ClientModel.js";
+import { ProjectProduct } from "./ProjectProductModel.js";
 
 const ProjectModel = db.define("projects", {
   nombre: {
@@ -34,26 +35,12 @@ const ProjectModel = db.define("projects", {
   prioridad: {
     type: DataTypes.ENUM('BAJA', 'MEDIA', 'ALTA'),
     defaultValue: 'MEDIA'
-  }
+  },
+  fecha_completado: DataTypes.DATE,
+  motivo_cancelacion: DataTypes.STRING,
+  notas_cierre: DataTypes.TEXT
 });
 
-// Tabla para productos asignados al proyecto
-export const ProjectProduct = db.define("project_products", {
-  cantidad_requerida: {
-    type: DataTypes.INTEGER,
-    allowNull: false
-  },
-  cantidad_entregada: {
-    type: DataTypes.INTEGER,
-    defaultValue: 0
-  },
-  estado: {
-    type: DataTypes.ENUM('PENDIENTE', 'RESERVADO', 'ENTREGADO'),
-    defaultValue: 'PENDIENTE'
-  },
-  fecha_requerida: DataTypes.DATE,
-  notas: DataTypes.STRING
-});
 
 ProjectModel.belongsToMany(ProductModel, { through: ProjectProduct });
 ProductModel.belongsToMany(ProjectModel, { through: ProjectProduct });

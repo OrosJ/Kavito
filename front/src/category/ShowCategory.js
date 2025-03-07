@@ -5,13 +5,27 @@ import { MaterialReactTable } from "material-react-table";
 import { Button, IconButton, Tooltip, Box } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import Swal from "sweetalert2";
 
-const URI = "http://localhost:8000/categories/"; // RUTA
+const mostrarMensaje = (tipo, titulo, texto) => {
+  Swal.fire({
+    icon: tipo,
+    title: titulo,
+    text: texto,
+    position: "top-end",
+    toast: true,
+    timer: tipo === "success" ? 2000 : undefined,
+    timerProgressBar: true,
+    showConfirmButton: tipo !== "success",
+  });
+};
+
+const URI = "http://localhost:8000/categories/";
 
 const CompShowCategories = () => {
   const [categories, setCategories] = useState([]);
 
-  // Cargar todos los datos cuando el componente se monta
+  // Carga todos los datos cuando el componente se monta
   useEffect(() => {
     getCategories();
   }, []);
@@ -19,15 +33,34 @@ const CompShowCategories = () => {
   const getCategories = async () => {
     try {
       const res = await axios.get(URI);
-      setCategories(res.data); // Almacena los datos en el estado
+      setCategories(res.data); // almacena los datos en el estado
     } catch (error) {
       console.error("Error al obtener los usuarios:", error);
     }
   };
 
   const deleteCategory = async (id) => {
-    await axios.delete(`${URI}${id}`);
-    getCategories(); // Vuelve a cargar la lista después de eliminar
+    const result = await Swal.fire({
+      title: "¿Estás seguro?",
+      text: "¡Este categoria será eliminada permanentemente!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "¡Sí, eliminar!",
+      cancelButtonText: "Cancelar",
+    });
+
+    if(result.isConfirmed){
+      try {
+        await axios.delete(`${URI}${id}`);
+        getCategories(); 
+        mostrarMensaje('success', '¡Eliminado!', 'Categoria eliminada correctamente.');
+      } catch (error) {
+        console.error('Error al eliminar el cliente:', error);
+        mostrarMensaje('error', '¡Error!', 'No se pudo eliminar.');
+      }
+    }
   };
 
   const columns = useMemo(

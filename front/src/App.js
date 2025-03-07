@@ -13,6 +13,7 @@ import CompEditProduct from "./product/EditProducts";
 import CompShowUsers from "./user/ShowUsers";
 import CompCreateUser from "./user/CreateUsers";
 import CompShowClients from "./client/ShowClients.js";
+import CompCreateClient from "./client/CreateClients.js";
 import CompShowCategories from "./category/ShowCategory";
 import CompCreateCategory from "./category/CreateCategory";
 import CompShowInvOuts from "./invout/ShowOuts.js";
@@ -21,6 +22,8 @@ import ConfirmarSalida from "./invout/Cart.js";
 import InvOutDetails from "./invout/InvOutDetails.js";
 import CompShowProjects from "./project/ShowProjects";
 import CompCreateProject from "./project/CreateProject";
+import CompProjectDetails from "./project/ProjectDetails.js";
+
 import Login from "./auth/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -90,7 +93,7 @@ function App() {
   };
 
   return (
-    <div className={`App ${isAuthenticated ? 'authenticated' : ''}`}>
+    <div className={`App ${isAuthenticated ? "authenticated" : ""}`}>
       {/* Mostrar la barra de navegación solo si el usuario está autenticado */}
       {isAuthenticated && (
         <CompNavbar
@@ -188,6 +191,24 @@ function App() {
             }
           />
           <Route
+            path="/create-client"
+            element={
+              <ProtectedRoute
+                isAuthenticated={isAuthenticated}
+                element={<CompCreateClient />}
+              />
+            }
+          />
+          <Route
+            path="/edit-client/:id"
+            element={
+              <ProtectedRoute
+                isAuthenticated={isAuthenticated}
+                element={<CompCreateClient />}
+              />
+            }
+          />
+          <Route
             path="/categories"
             element={
               <ProtectedRoute
@@ -249,6 +270,15 @@ function App() {
               <ProtectedRoute
                 isAuthenticated={isAuthenticated}
                 element={<CompCreateProject />}
+              />
+            }
+          />
+          <Route
+            path="/projects/details/:id"
+            element={
+              <ProtectedRoute
+                isAuthenticated={isAuthenticated}
+                element={<CompProjectDetails />}
               />
             }
           />

@@ -1,0 +1,22 @@
+.MuiTableContainer-root {
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-height: calc(100vh - 200px); /* Ajusta la altura máxima según tus necesidades */
+  }
+  
+  .MuiTableContainer-root .MuiTable-root {
+    min-width: 100%;
+  }
+  
+  .MuiTableContainer-root::-webkit-scrollbar {
+    height: 8px;
+  }
+  
+  .MuiTableContainer-root::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+  }
+  
+  .MuiTableContainer-root::-webkit-scrollbar-track {
+    background-color: rgba(0, 0, 0, 0.1);
+  }

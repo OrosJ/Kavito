@@ -4,8 +4,8 @@ const router = express.Router()
 
 router.get('/', getAllClients)
 router.get('/:id', getClient)
-router.post('/', createClient)
-router.put('/:id', updateClient)
+router.post('/register', createClient)
+router.put('/edit-client/:id', updateClient)
 router.delete('/:id', deleteClient)
 
 

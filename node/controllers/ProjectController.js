@@ -1,5 +1,12 @@
-import ProjectModel, { ProjectProduct } from "../models/ProjectModel.js";
+import ProjectModel from "../models/ProjectModel.js";
+import {
+  ProjectProduct,
+  ProjectProductHistory,
+} from "../models/ProjectProductModel.js";
 import ProductModel from "../models/ProductModel.js";
+import InventoryOutModel, {
+  InventoryOutProduct,
+} from "../models/InvOutModel.js";
 import Client from "../models/ClientModel.js";
 import { Op } from "sequelize";
 import db from "../database/db.js";
@@ -11,9 +18,22 @@ export const getProjects = async (req, res) => {
       include: [
         {
           model: ProductModel,
-          through: { attributes: ["cantidad_requerida", "cantidad_entregada"] },
+          through: {
+            model: ProjectProduct,
+            attributes: [
+              "cantidad_requerida",
+              "cantidad_entregada",
+              "cantidad_reservada",
+              "estado",
+              "fecha_requerida",
+            ],
+          },
+        },
+        {
+          model: Client,
         },
       ],
+      order: [["fecha_entrega", "ASC"]],
     });
     res.json(projects);
   } catch (error) {
@@ -22,22 +42,68 @@ export const getProjects = async (req, res) => {
   }
 };
 
-// Obtener un proyecto específico
+// Obtener un proyecto específico con todos sus detalles
 export const getProject = async (req, res) => {
+  const transaction = await db.transaction();
   try {
+    console.log("Buscando proyecto con ID:", req.params.id);
     const project = await ProjectModel.findByPk(req.params.id, {
       include: [
         {
           model: ProductModel,
-          through: { attributes: ["cantidad_requerida", "cantidad_entregada"] },
+          as:'products',
+          through: {
+            model: ProjectProduct,
+            attributes: [
+              "id", // Importante incluir el id para referencias
+              "cantidad_requerida",
+              "cantidad_entregada",
+              "cantidad_reservada",
+              "estado",
+              "fecha_requerida",
+            ],
+          },
+        },
+        {
+          model: Client,
         },
       ],
+      transaction,
     });
+
+    console.log("Proyecto encontrado:", JSON.stringify(project, null, 2));
+
     if (!project) {
+      await transaction.rollback();
       return res.status(404).json({ message: "Proyecto no encontrado" });
     }
-    res.json(project);
+
+    const projectProducts = project.products
+      .map((p) => p.project_products.id)
+      .filter((id) => id != null);
+
+    let history = [];
+    if (projectProducts.length > 0) {
+      history = await ProjectProductHistory.findAll({
+        where: {
+          project_product_id: {
+            [Op.in]: projectProducts,
+          },
+        },
+        transaction,
+      });
+    }
+
+    const projectData = project.toJSON();
+    projectData.history = history;
+
+    await transaction.commit();
+    res.json(projectData);
   } catch (error) {
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
+    console.error("Error completo:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -46,7 +112,6 @@ export const getProject = async (req, res) => {
 export const createProject = async (req, res) => {
   const transaction = await db.transaction();
   try {
-    console.log("Datos recibidos:", req.body);
     const {
       nombre,
       descripcion,
@@ -54,18 +119,39 @@ export const createProject = async (req, res) => {
       fecha_entrega,
       productos,
       client_id,
+      direccion,
+      presupuesto,
+      prioridad,
       ...otrosDatos
     } = req.body;
 
+    // Validaciones básicas
     if (!nombre || !fecha_inicio || !fecha_entrega || !client_id) {
       throw new Error("Faltan campos requeridos");
     }
 
+    // Validar fechas
+    const fechaInicio = new Date(fecha_inicio);
+    const fechaEntrega = new Date(fecha_entrega);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    if (fechaInicio < hoy) {
+      throw new Error("La fecha de inicio no puede ser anterior a hoy");
+    }
+    if (fechaEntrega <= fechaInicio) {
+      throw new Error(
+        "La fecha de entrega debe ser posterior a la fecha de inicio"
+      );
+    }
+
+    // Validar cliente
     const client = await Client.findByPk(client_id);
     if (!client) {
       throw new Error(`Cliente con ID ${client_id} no encontrado`);
     }
 
+    // Crear proyecto
     const project = await ProjectModel.create(
       {
         nombre,
@@ -73,64 +159,142 @@ export const createProject = async (req, res) => {
         fecha_inicio,
         fecha_entrega,
         client_id,
-        ...otrosDatos,
+        direccion,
+        presupuesto,
+        prioridad: prioridad || "MEDIA",
+        estado: "PLANIFICACION",
       },
       { transaction }
     );
 
-    console.log("Proyecto creado:", project);
+    console.log("Proyecto creado:", project.id);
 
+    // Procesar productos
     if (productos && productos.length > 0) {
       for (const prod of productos) {
-        console.log("Procesando producto:", prod); // Log de cada producto
+        console.log("Procesando producto:", prod);
 
+        // Validar datos del producto
         if (!prod.product_id || !prod.cantidad_requerida) {
           throw new Error("Datos de producto incompletos");
         }
-        const producto = await ProductModel.findByPk(prod.product_id);
+
+        const producto = await ProductModel.findByPk(prod.product_id, {
+          transaction,
+          lock: true,
+        });
+
         if (!producto) {
           throw new Error(`Producto ${prod.product_id} no encontrado`);
         }
 
-        await ProjectProduct.create(
-          {
-            projectId: project.id,
-            productId: prod.product_id,
-            cantidad_requerida: prod.cantidad_requerida,
-            fecha_requerida: prod.fecha_requerida || null,
-          },
-          { transaction }
-        );
+        console.log("Producto encontrado:", producto.descripcion);
 
+        // Verificar disponibilidad si se quiere reservar
         if (prod.reservar) {
-          if (producto.cantidad < prod.cantidad_requerida) {
-            throw new Error(`Stock insuficiente para ${producto.descripcion}`);
+          const disponible =
+            producto.cantidad - (producto.cantidad_reservada || 0);
+          if (disponible < prod.cantidad_requerida) {
+            throw new Error(
+              `Stock insuficiente para ${producto.descripcion}. ` +
+                `Disponible: ${disponible}, Requerido: ${prod.cantidad_requerida}`
+            );
           }
-          await producto.decrement("cantidad", {
-            by: prod.cantidad_requerida,
-            transaction,
-          });
+        }
+
+        try {
+          // Crear relación proyecto-producto
+          console.log("Creando ProjectProduct...");
+          const projectProduct = await ProjectProduct.create(
+            {
+              projectId: project.id,
+              productId: parseInt(prod.product_id),
+              cantidad_requerida: parseInt(prod.cantidad_requerida),
+              fecha_requerida: prod.fecha_requerida || null,
+              estado: prod.reservar ? "RESERVADO" : "PENDIENTE",
+              cantidad_reservada: prod.reservar
+                ? parseInt(prod.cantidad_requerida)
+                : 0,
+              cantidad_entregada: 0,
+              notas: null,
+            },
+            {
+              transaction,
+              returning: true,
+            }
+          );
+
+          console.log("ProjectProduct creado con ID:", projectProduct.id);
+
+          // Si se solicita reservar
+          if (prod.reservar) {
+            // Actualizar stock del producto
+            await producto.increment("cantidad_reservada", {
+              by: parseInt(prod.cantidad_requerida),
+              transaction,
+            });
+
+            console.log("Stock actualizado para producto:", producto.id);
+
+            // Crear registro en historial
+            await ProjectProductHistory.create(
+              {
+                project_product_id: projectProduct.id,
+                tipo_cambio: "RESERVA",
+                cantidad: parseInt(prod.cantidad_requerida),
+                estado_anterior: "PENDIENTE",
+                estado_nuevo: "RESERVADO",
+                motivo: "Reserva inicial al crear proyecto",
+                usuario_id: req.userId || null,
+              },
+              { transaction }
+            );
+
+            console.log("Historial creado");
+          }
+        } catch (error) {
+          console.error("Error detallado al crear ProjectProduct:", error);
+          throw new Error(
+            `Error al procesar producto ${producto.descripcion}: ${error.message}`
+          );
         }
       }
     }
 
     await transaction.commit();
+    console.log("Transacción completada");
+
+    // Obtener el proyecto completo con sus relaciones
+    const projectComplete = await ProjectModel.findByPk(project.id, {
+      include: [
+        {
+          model: ProductModel,
+          through: {
+            attributes: [
+              "cantidad_requerida",
+              "cantidad_entregada",
+              "cantidad_reservada",
+              "estado",
+              "fecha_requerida",
+            ],
+          },
+        },
+        {
+          model: Client,
+        },
+      ],
+    });
+
     res.status(201).json({
       message: "Proyecto creado exitosamente",
-      project: {
-        ...project.toJSON(),
-        productos: productos,
-      },
+      project: projectComplete,
     });
   } catch (error) {
     await transaction.rollback();
     console.error("Error en createProject:", error);
-    res
-      .status(500)
-      .json({
-        message: error.message || "Error al crear el proyecto",
-        error: error.toString(),
-      });
+    res.status(500).json({
+      message: error.message || "Error al crear el proyecto",
+    });
   }
 };
 
@@ -139,27 +303,88 @@ export const updateProject = async (req, res) => {
   const transaction = await db.transaction();
   try {
     const { id } = req.params;
-    const project = await ProjectModel.findByPk(id);
+    const {
+      nombre,
+      descripcion,
+      fecha_inicio,
+      fecha_entrega,
+      productos,
+      client_id,
+      presupuesto,
+    } = req.body;
+
+    const project = await ProjectModel.findByPk(id, {
+      include: [
+        {
+          model: ProductModel,
+          through: {
+            attributes: ["id", "cantidad_reservada", "estado"],
+          },
+        },
+      ],
+      transaction,
+    });
 
     if (!project) {
       return res.status(404).json({ message: "Proyecto no encontrado" });
     }
 
-    await project.update(req.body, { transaction });
+    if (project.estado === "COMPLETADO" || project.estado === "CANCELADO") {
+      throw new Error(
+        `No se puede modificar un proyecto ${project.estado.toLowerCase()}`
+      );
+    }
 
-    if (req.body.productos) {
-      // Eliminar productos anteriores
+    await project.update(
+      {
+        nombre,
+        descripcion,
+        fecha_inicio,
+        fecha_entrega,
+        client_id,
+        presupuesto,
+      },
+      { transaction }
+    );
+
+    if (productos) {
+      // Liberar reservas
+      for (const producto of project.products) {
+        if (producto.project_products.cantidad_reservada > 0) {
+          await ProductModel.increment("cantidad_reservada", {
+            by: -producto.project_products.cantidad_reservada,
+            where: { id: producto.id },
+            transaction,
+          });
+        }
+      }
+
+      // Eliminar productos
       await ProjectProduct.destroy({
         where: { projectId: id },
         transaction,
       });
 
       // Agregar nuevos productos
-      for (const prod of req.body.productos) {
+      for (const prod of productos) {
+        const producto = await ProductModel.findByPk(prod.product_id, {
+          transaction,
+          lock: true,
+        });
+
+        if (!producto) {
+          throw new Error(`Producto ${prod.product_id} no encontrado`);
+        }
+
         await ProjectProduct.create(
           {
             projectId: id,
-            ...prod,
+            productId: prod.product_id,
+            cantidad_requerida: prod.cantidad_requerida,
+            fecha_requerida: prod.fecha_requerida || null,
+            estado: "PENDIENTE",
+            cantidad_reservada: 0,
+            cantidad_entregada: 0,
           },
           { transaction }
         );
@@ -167,7 +392,31 @@ export const updateProject = async (req, res) => {
     }
 
     await transaction.commit();
-    res.json(project);
+
+    const updatedProject = await ProjectModel.findByPk(id, {
+      include: [
+        {
+          model: ProductModel,
+          through: {
+            attributes: [
+              "cantidad_requerida",
+              "cantidad_entregada",
+              "cantidad_reservada",
+              "estado",
+              "fecha_requerida",
+            ],
+          },
+        },
+        {
+          model: Client,
+        },
+      ],
+    });
+
+    res.json({
+      message: "Proyecto actualizado exitosamente",
+      project: updatedProject,
+    });
   } catch (error) {
     await transaction.rollback();
     res.status(500).json({ message: error.message });
@@ -179,26 +428,323 @@ export const deleteProject = async (req, res) => {
   const transaction = await db.transaction();
   try {
     const { id } = req.params;
-    const project = await ProjectModel.findByPk(id);
+    const project = await ProjectModel.findByPk(id, {
+      include: [
+        {
+          model: ProductModel,
+          through: ProjectProduct,
+        },
+      ],
+      transaction,
+    });
 
     if (!project) {
       return res.status(404).json({ message: "Proyecto no encontrado" });
     }
 
-    // Eliminar productos asociados
-    await ProjectProduct.destroy({
-      where: { projectId: id },
+    // No permitir eliminar proyectos completados
+    if (project.estado === "COMPLETADO") {
+      throw new Error("No se pueden eliminar proyectos completados");
+    }
+
+    // Liberar productos reservados
+    for (const producto of project.products) {
+      const projectProduct = producto.project_products;
+      if (projectProduct.cantidad_reservada > 0) {
+        await producto.decrement("cantidad_reservada", {
+          by: projectProduct.cantidad_reservada,
+          transaction,
+        });
+      }
+    }
+
+    // Eliminar registros relacionados
+    await ProjectProductHistory.destroy({
+      where: {
+        project_product_id: {
+          [Op.in]: project.products.map((p) => p.project_products.id),
+        },
+      },
       transaction,
     });
 
-    // Eliminar el proyecto
     await project.destroy({ transaction });
 
     await transaction.commit();
-    res.json({ message: "Proyecto eliminado correctamente" });
+    res.json({
+      message: "Proyecto eliminado correctamente",
+      projectId: id,
+    });
   } catch (error) {
     await transaction.rollback();
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Actualizar estado del proyecto
+export const updateProjectStatus = async (req, res) => {
+  const transaction = await db.transaction();
+  try {
+    const { id } = req.params;
+    const { estado, motivo, notas } = req.body;
+    const userId = req.userId || req.user.id;
+
+    if (!userId) {
+      throw new Error('Usuario no autenticado');
+    }
+
+    const project = await ProjectModel.findByPk(id, {
+      include: [
+        {
+          model: ProductModel,
+          through: {
+            attributes: [
+              "id",
+              "cantidad_requerida",
+              "cantidad_entregada",
+              "cantidad_reservada",
+            ],
+          },
+        },
+        {
+          model: Client,
+        },
+      ],
+      transaction,
+    });
+
+    if (!project) {
+      return res.status(404).json({ message: "Proyecto no encontrado" });
+    }
+
+    // Validar transiciones de estado válidas
+    const estadoAnterior = project.estado;
+    const transicionesValidas = {
+      PLANIFICACION: ["EN_PROGRESO", "CANCELADO"],
+      EN_PROGRESO: ["PAUSADO", "COMPLETADO", "CANCELADO"],
+      PAUSADO: ["EN_PROGRESO", "CANCELADO"],
+      COMPLETADO: [],
+      CANCELADO: [],
+    };
+
+    if (!transicionesValidas[estadoAnterior].includes(estado)) {
+      throw new Error(
+        `No se puede cambiar el estado de ${estadoAnterior} a ${estado}`
+      );
+    }
+
+    // Si el proyecto se está completando
+    if (estado === "COMPLETADO") {
+      // Verificar que todos los productos requeridos estén disponibles
+      for (const producto of project.products) {
+        const projectProduct = producto.project_products;
+        const cantidadPendiente =
+          projectProduct.cantidad_requerida - projectProduct.cantidad_entregada;
+
+        if (cantidadPendiente > 0) {
+          const stockDisponible =
+            producto.cantidad -
+            (producto.cantidad_reservada - projectProduct.cantidad_reservada);
+
+          if (stockDisponible < cantidadPendiente) {
+            throw new Error(
+              `Stock insuficiente para completar el proyecto. ` +
+                `Faltantes en producto: ${producto.descripcion}`
+            );
+          }
+        }
+      }
+
+      // Generar salida de inventario
+      const fecha = new Date();
+      const year = fecha.getFullYear().toString().substr(-2);
+      const month = (fecha.getMonth() + 1).toString().padStart(2, "0");
+      const day = fecha.getDate().toString().padStart(2, "0");
+
+      const ultimaSalida = await InventoryOutModel.findOne({
+        where: {
+          createdAt: {
+            [Op.gte]: new Date(fecha.setHours(0, 0, 0, 0)),
+          },
+        },
+        order: [["createdAt", "DESC"]],
+        transaction,
+      });
+
+      let secuencial = "001";
+      if (ultimaSalida && ultimaSalida.codigo) {
+        const ultimoSecuencial = parseInt(ultimaSalida.codigo.slice(-3)) + 1;
+        secuencial = ultimoSecuencial.toString().padStart(3, "0");
+      }
+
+      const codigo = `S${year}${month}${day}${secuencial}`;
+      let total = 0;
+
+      // Crear salida de inventario
+      const inventoryOut = await InventoryOutModel.create(
+        {
+          codigo,
+          user_id: userId,
+          obs: `Salida por finalización de proyecto: ${project.nombre} (ID: ${project.id})`,
+          total: 0, // Se actualizará después de procesar todos los productos
+        },
+        { transaction }
+      );
+
+      // Procesar cada producto del proyecto
+      for (const producto of project.products) {
+        const projectProduct = producto.project_products;
+        const cantidadPendiente =
+          projectProduct.cantidad_requerida - projectProduct.cantidad_entregada;
+
+        if (cantidadPendiente > 0) {
+          // Verificar stock disponible
+          const stockDisponible =
+            producto.cantidad -
+            (producto.cantidad_reservada - projectProduct.cantidad_reservada);
+
+          if (stockDisponible < cantidadPendiente) {
+            throw new Error(
+              `Stock insuficiente para el producto ${producto.descripcion}`
+            );
+          }
+
+          // Calcular subtotal
+          const subtotal = parseFloat(producto.precio) * cantidadPendiente;
+          total += subtotal;
+
+          // Registrar en salida
+          await InventoryOutProduct.create(
+            {
+              invout_id: inventoryOut.id,
+              product_id: producto.id,
+              cantidad: cantidadPendiente,
+              subtotal: subtotal,
+            },
+            { transaction }
+          );
+
+          // Actualizar stock y reservas
+          await producto.decrement("cantidad", {
+            by: cantidadPendiente,
+            transaction,
+          });
+
+          if (projectProduct.cantidad_reservada > 0) {
+            await producto.decrement("cantidad_reservada", {
+              by: projectProduct.cantidad_reservada,
+              transaction,
+            });
+          }
+
+          // Actualizar estado del producto en el proyecto
+          await projectProduct.update(
+            {
+              estado: "ENTREGADO",
+              cantidad_entregada: projectProduct.cantidad_requerida,
+              cantidad_reservada: 0,
+            },
+            { transaction }
+          );
+
+          // Registrar en historial
+          await ProjectProductHistory.create(
+            {
+              project_product_id: projectProduct.id,
+              tipo_cambio: "ENTREGA",
+              cantidad: cantidadPendiente,
+              estado_anterior: projectProduct.estado,
+              estado_nuevo: "ENTREGADO",
+              usuario_id: req.userId,
+            },
+            { transaction }
+          );
+        }
+      }
+
+      // Actualizar total de la salida
+      await inventoryOut.update({ total }, { transaction });
+    }
+
+    if (estado === "CANCELADO") {
+      // Liberar todas las reservas existentes
+      for (const producto of project.products) {
+        if (producto.project_products.cantidad_reservada > 0) {
+          await ProductModel.increment("cantidad_reservada", {
+            by: -producto.project_products.cantidad_reservada,
+            where: { id: producto.id },
+            transaction,
+          });
+
+          await producto.project_products.update(
+            {
+              estado: "CANCELADO",
+              cantidad_reservada: 0,
+            },
+            { transaction }
+          );
+
+          await ProjectProductHistory.create(
+            {
+              project_product_id: producto.project_products.id,
+              tipo_cambio: "CANCELACION",
+              cantidad: producto.project_products.cantidad_reservada,
+              estado_anterior: producto.project_products.estado,
+              estado_nuevo: "CANCELADO",
+              motivo: motivo || "Cancelación del proyecto",
+              usuario_id: req.userId,
+            },
+            { transaction }
+          );
+        }
+      }
+    }
+
+    // Actualizar estado del proyecto
+    await project.update(
+      {
+        estado,
+        ...(estado === "COMPLETADO" && { fecha_completado: new Date() }),
+        ...(estado === "CANCELADO" && { motivo_cancelacion: motivo }),
+        ...(notas && { notas_cierre: notas }),
+      },
+      { transaction }
+    );
+
+    await transaction.commit();
+
+    // Obtener el proyecto actualizado con toda su información
+    const projectUpdated = await ProjectModel.findByPk(id, {
+      include: [
+        {
+          model: ProductModel,
+          through: {
+            attributes: [
+              "cantidad_requerida",
+              "cantidad_entregada",
+              "cantidad_reservada",
+              "estado",
+              "fecha_requerida",
+            ],
+          },
+        },
+        {
+          model: Client,
+        },
+      ],
+    });
+
+    res.json({
+      message: `Proyecto ${estado.toLowerCase()} exitosamente`,
+      project: projectUpdated,
+      ...(estado === "COMPLETADO" && { inventoryOut }),
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Error en updateProjectStatus:", error);
+    res.status(500).json({
+      message: error.message || "Error al actualizar el estado del proyecto",
+    });
   }
 };
 
@@ -229,6 +775,9 @@ export const getProjectsWithDeadlines = async (req, res) => {
             },
           },
         },
+        {
+          model: Client,
+        },
       ],
     });
 
@@ -242,10 +791,12 @@ export const getProjectsWithDeadlines = async (req, res) => {
 export const assignProductToProject = async (req, res) => {
   const transaction = await db.transaction();
   try {
-    const { projectId, productId, cantidad } = req.body;
+    const { projectId, productId, cantidad, reservar } = req.body;
 
     const projectProduct = await ProjectProduct.findOne({
       where: { projectId, productId },
+      transaction,
+      lock: true,
     });
 
     if (!projectProduct) {
@@ -257,27 +808,72 @@ export const assignProductToProject = async (req, res) => {
       lock: true,
     });
 
-    if (product.cantidad < cantidad) {
-      throw new Error("Stock insuficiente");
+    if (!product) {
+      throw new Error("Producto no encontrado");
     }
 
-    await product.decrement("cantidad", { by: cantidad, transaction });
-    await projectProduct.increment("cantidad_entregada", {
-      by: cantidad,
-      transaction,
-    });
+    // Verificar disponibilidad si se quiere reservar
+    if (reservar) {
+      const disponible = product.cantidad - product.cantidad_reservada;
+      if (disponible < cantidad) {
+        throw new Error(
+          `Stock insuficiente para reservar. Disponible: ${disponible}, Solicitado: ${cantidad}`
+        );
+      }
 
-    if (
-      projectProduct.cantidad_entregada + cantidad >=
-      projectProduct.cantidad_requerida
-    ) {
-      await projectProduct.update({ estado: "ENTREGADO" }, { transaction });
+      // Actualizar reserva en el producto
+      await product.increment("cantidad_reservada", {
+        by: cantidad,
+        transaction,
+      });
+
+      // Actualizar reserva en la relación proyecto-producto
+      await projectProduct.increment("cantidad_reservada", {
+        by: cantidad,
+        transaction,
+      });
+
+      // Actualizar estado si es necesario
+      if (projectProduct.estado === "PENDIENTE") {
+        await projectProduct.update(
+          {
+            estado: "RESERVADO",
+          },
+          { transaction }
+        );
+      }
     }
+
+    // Registrar en el historial
+    await ProjectProductHistory.create(
+      {
+        project_product_id: projectProduct.id,
+        tipo_cambio: reservar ? "RESERVA" : "MODIFICACION",
+        cantidad,
+        estado_anterior: projectProduct.estado,
+        estado_nuevo: reservar ? "RESERVADO" : projectProduct.estado,
+        usuario_id: req.userId,
+      },
+      { transaction }
+    );
 
     await transaction.commit();
-    res.json({ message: "Producto asignado correctamente" });
+
+    // Obtener datos actualizados
+    const updatedProjectProduct = await ProjectProduct.findOne({
+      where: { projectId, productId },
+      include: [ProductModel],
+    });
+
+    res.json({
+      message: "Producto actualizado correctamente",
+      projectProduct: updatedProjectProduct,
+    });
   } catch (error) {
     await transaction.rollback();
-    res.status(500).json({ message: error.message });
+    console.error("Error en assignProductToProject:", error);
+    res.status(500).json({
+      message: error.message || "Error al asignar producto al proyecto",
+    });
   }
 };

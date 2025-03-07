@@ -124,42 +124,40 @@ const CompShowInvOuts = () => {
 
     const addHeader = (doc) => {
       doc.setFillColor(63, 81, 181);
-      doc.rect(0, 0, doc.internal.pageSize.width, 65, "F");
+      doc.rect(0, 0, doc.internal.pageSize.width, 50, "F");
 
       doc.setDrawColor(255, 255, 255);
       doc.setLineWidth(0.5);
-      doc.rect(15, 15, 40, 40, "S");
-      doc.setFontSize(8);
-      doc.setTextColor(255, 255, 255);
-      doc.text("(Logo)", 27, 35);
+      doc.rect(15, 5, 40, 40, "S");
+      doc.addImage('images/logo.png', 'PNG', 15, 5, 40, 40);
 
       doc.setFontSize(22);
       doc.setTextColor(255, 255, 255);
-      doc.text("FERRETERÍA KAVITO", 60, 30);
+      doc.text("FERRETERÍA KAVITO", 60, 25);
 
       doc.setFontSize(10);
-      doc.text("Dirección: [Tu dirección aquí]", 60, 40);
-      doc.text("Teléfono: [Tu teléfono]", 60, 45);
-      doc.text("Email: [Tu email]", 60, 50);
+      doc.text("Dirección: Calle Boqueron N°1355 entre Colombia y Almirante Grau", 60, 35);
+      doc.text("Teléfono: 76788361", 60, 40);
+      doc.text("Email: ", 60, 45);
 
       doc.setDrawColor(255, 255, 255);
       doc.setLineWidth(0.5);
-      doc.line(15, 60, 195, 60);
+      doc.line(15, 48, 195, 48);
     };
 
     doc.setFillColor(240, 240, 240);
-    doc.rect(0, 65, doc.internal.pageSize.width, 20, "F");
+    doc.rect(0, 50, doc.internal.pageSize.width, 20, "F");
     doc.setTextColor(63, 81, 181);
     doc.setFontSize(16);
-    doc.text("REPORTE DE SALIDAS", doc.internal.pageSize.width / 2, 78, {
+    doc.text("REPORTE DE SALIDAS", doc.internal.pageSize.width / 2, 63, {
       align: "center",
     });
 
     doc.setTextColor(100, 100, 100);
     doc.setFontSize(10);
-    doc.text(`Fecha de generación: ${new Date().toLocaleDateString()}`, 15, 90);
+    doc.text(`Fecha de generación: ${new Date().toLocaleDateString()}`, 15, 75);
 
-    const statsY = 100;
+    const statsY = 85;
     const statsHeight = 25;
 
     const totalSalidas = dataToExport.length;

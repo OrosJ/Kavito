@@ -1,6 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import Swal from "sweetalert2";
+
+const mostrarMensaje = (tipo, titulo, texto) => {
+  Swal.fire({
+    icon: tipo,
+    title: titulo,
+    text: texto,
+    position: "top-end",
+    toast: true,
+    timer: tipo === "success" ? 2000 : undefined,
+    timerProgressBar: true,
+    showConfirmButton: tipo !== "success",
+  });
+};
 
 const URI = 'http://localhost:8000/users/'; // Ruta base para la API
 
@@ -35,7 +49,7 @@ const EditUser = () => {
     e.preventDefault();
     try {
       const res = await axios.put(`${URI}${id}`, userData);
-      alert('Usuario actualizado exitosamente');
+      mostrarMensaje('success', '¡Editado!', 'Datos de usuario actualizados correctamente.');
       navigate('/users'); // Redirige a la lista de usuarios después de la actualización
     } catch (error) {
       console.error('Hubo un error al actualizar el usuario:', error);

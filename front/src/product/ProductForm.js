@@ -84,7 +84,7 @@ const ProductForm = ({ initialData = {}, onSubmit, isEditing = false }) => {
     <div className="product-form-container">
       <div className="product-form-card">
         <h2 className="form-title">
-          {isEditing ? "Editar Producto" : "Crear Producto"}
+          {isEditing ? "Editar Producto" : "Registrar Producto"}
         </h2>
 
         {error && <div className="error-message">{error}</div>}

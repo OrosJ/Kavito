@@ -7,7 +7,8 @@ import {
     updateProject, 
     deleteProject,
     assignProductToProject,
-    getProjectsWithDeadlines
+    getProjectsWithDeadlines,
+    updateProjectStatus,
 } from '../controllers/ProjectController.js';
 
 const router = express.Router();
@@ -18,6 +19,9 @@ router.get('/:id', authenticateToken, getProject);
 router.post('/', authenticateToken, createProject);
 router.put('/:id', authenticateToken, updateProject);
 router.delete('/:id', authenticateToken, deleteProject);
+router.put('/:id/status', authenticateToken, updateProjectStatus);
+
+
 
 // Rutas adicionales específicas de proyectos
 router.get('/deadlines/upcoming', authenticateToken, getProjectsWithDeadlines);

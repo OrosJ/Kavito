@@ -10,12 +10,16 @@ import categoryRoutes from "./routes/categoryRoutes.js";
 import inventoryOutRoutes from "./routes/invoutRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js"; 
 import statsRoutes from './routes/statsRoutes.js';
+import projectproductRoutes from './routes/projectproductRoutes.js'
+import { setupAssociations } from './models/modelAssociations.js';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const app = express();
-
+setupAssociations();
 // Configuración general
 const corsOptions = {
-  origin: 'http://localhost:3000',  // Permitir solo solicitudes de este origen
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',  // Permitir solo solicitudes de este origen
   methods: ['GET', 'POST', 'PUT', 'DELETE'],  // Métodos HTTP permitidos
   allowedHeaders: ['Content-Type', 'Authorization'],  // Encabezados permitidos
 };
@@ -37,6 +41,7 @@ app.use("/clients", clientRoutes);
 app.use("/categories", categoryRoutes);
 app.use("/invouts", inventoryOutRoutes);
 app.use("/projects", projectRoutes);
+app.use("/project-products", projectproductRoutes);
 app.use("/stats", statsRoutes);
 
 app.use((req, res, next) => {
@@ -64,6 +69,7 @@ try {
 }
 
 // Iniciar el servidor
-app.listen(8000, () => {
-  console.log("Server running at http://localhost:8000/");
+const PORT = process.env.PORT || 8000;
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}/`);
 });
