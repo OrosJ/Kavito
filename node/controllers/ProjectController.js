@@ -18,6 +18,7 @@ export const getProjects = async (req, res) => {
       include: [
         {
           model: ProductModel,
+          as: "products",
           through: {
             model: ProjectProduct,
             attributes: [
@@ -31,6 +32,7 @@ export const getProjects = async (req, res) => {
         },
         {
           model: Client,
+          as: "client",
         },
       ],
       order: [["fecha_entrega", "ASC"]],
@@ -46,16 +48,16 @@ export const getProjects = async (req, res) => {
 export const getProject = async (req, res) => {
   const transaction = await db.transaction();
   try {
-    console.log("Buscando proyecto con ID:", req.params.id);
+    /* console.log("Buscando proyecto con ID:", req.params.id); */
     const project = await ProjectModel.findByPk(req.params.id, {
       include: [
         {
           model: ProductModel,
-          as:'products',
+          as: "products",
           through: {
             model: ProjectProduct,
             attributes: [
-              "id", // Importante incluir el id para referencias
+              "id", // incluir el id para referencias
               "cantidad_requerida",
               "cantidad_entregada",
               "cantidad_reservada",
@@ -66,12 +68,13 @@ export const getProject = async (req, res) => {
         },
         {
           model: Client,
+          as: "client",
         },
       ],
       transaction,
     });
 
-    console.log("Proyecto encontrado:", JSON.stringify(project, null, 2));
+    /* console.log("Proyecto encontrado:", JSON.stringify(project, null, 2)); */
 
     if (!project) {
       await transaction.rollback();
@@ -125,7 +128,7 @@ export const createProject = async (req, res) => {
       ...otrosDatos
     } = req.body;
 
-    // Validaciones básicas
+    // Validaciones
     if (!nombre || !fecha_inicio || !fecha_entrega || !client_id) {
       throw new Error("Faltan campos requeridos");
     }
@@ -134,7 +137,9 @@ export const createProject = async (req, res) => {
     const fechaInicio = new Date(fecha_inicio);
     const fechaEntrega = new Date(fecha_entrega);
     const hoy = new Date();
+
     hoy.setHours(0, 0, 0, 0);
+    fechaInicio.setHours(0, 0, 0, 0);
 
     if (fechaInicio < hoy) {
       throw new Error("La fecha de inicio no puede ser anterior a hoy");
@@ -151,6 +156,27 @@ export const createProject = async (req, res) => {
       throw new Error(`Cliente con ID ${client_id} no encontrado`);
     }
 
+    // Calcular costo total basado en los precios de los productos
+    let costoTotal = 0;
+    if (productos && productos.length > 0) {
+      for (const prod of productos) {
+        if (!prod.product_id || !prod.cantidad_requerida) {
+          throw new Error("Datos de producto incompletos");
+        }
+
+        const producto = await ProductModel.findByPk(prod.product_id, {
+          transaction,
+        });
+
+        if (!producto) {
+          throw new Error(`Producto ${prod.product_id} no encontrado`);
+        }
+
+        // Agregar al costo total
+        costoTotal += producto.precio * prod.cantidad_requerida;
+      }
+    }
+
     // Crear proyecto
     const project = await ProjectModel.create(
       {
@@ -160,23 +186,29 @@ export const createProject = async (req, res) => {
         fecha_entrega,
         client_id,
         direccion,
-        presupuesto,
+        costo: costoTotal,
         prioridad: prioridad || "MEDIA",
         estado: "PLANIFICACION",
       },
       { transaction }
     );
 
-    console.log("Proyecto creado:", project.id);
+    /* console.log("Proyecto creado:", project.id); */
 
     // Procesar productos
     if (productos && productos.length > 0) {
       for (const prod of productos) {
-        console.log("Procesando producto:", prod);
+        /* console.log("Procesando producto:", prod); */
 
         // Validar datos del producto
         if (!prod.product_id || !prod.cantidad_requerida) {
           throw new Error("Datos de producto incompletos");
+        }
+
+        if (prod.cantidad_requerida <= 0) {
+          throw new Error(
+            `La cantidad requerida debe ser mayor a 0 para el producto ${prod.product_id}`
+          );
         }
 
         const producto = await ProductModel.findByPk(prod.product_id, {
@@ -188,7 +220,7 @@ export const createProject = async (req, res) => {
           throw new Error(`Producto ${prod.product_id} no encontrado`);
         }
 
-        console.log("Producto encontrado:", producto.descripcion);
+        /* console.log("Producto encontrado:", producto.descripcion); */
 
         // Verificar disponibilidad si se quiere reservar
         if (prod.reservar) {
@@ -204,7 +236,7 @@ export const createProject = async (req, res) => {
 
         try {
           // Crear relación proyecto-producto
-          console.log("Creando ProjectProduct...");
+          /* console.log("Creando ProjectProduct..."); */
           const projectProduct = await ProjectProduct.create(
             {
               projectId: project.id,
@@ -224,7 +256,7 @@ export const createProject = async (req, res) => {
             }
           );
 
-          console.log("ProjectProduct creado con ID:", projectProduct.id);
+          /* console.log("ProjectProduct creado con ID:", projectProduct.id); */
 
           // Si se solicita reservar
           if (prod.reservar) {
@@ -234,7 +266,7 @@ export const createProject = async (req, res) => {
               transaction,
             });
 
-            console.log("Stock actualizado para producto:", producto.id);
+            /* console.log("Stock actualizado para producto:", producto.id); */
 
             // Crear registro en historial
             await ProjectProductHistory.create(
@@ -250,7 +282,7 @@ export const createProject = async (req, res) => {
               { transaction }
             );
 
-            console.log("Historial creado");
+            /* console.log("Historial creado"); */
           }
         } catch (error) {
           console.error("Error detallado al crear ProjectProduct:", error);
@@ -262,13 +294,14 @@ export const createProject = async (req, res) => {
     }
 
     await transaction.commit();
-    console.log("Transacción completada");
+    /* console.log("Transacción completada"); */
 
     // Obtener el proyecto completo con sus relaciones
     const projectComplete = await ProjectModel.findByPk(project.id, {
       include: [
         {
           model: ProductModel,
+          as: "products",
           through: {
             attributes: [
               "cantidad_requerida",
@@ -281,6 +314,7 @@ export const createProject = async (req, res) => {
         },
         {
           model: Client,
+          as: "client",
         },
       ],
     });
@@ -317,6 +351,7 @@ export const updateProject = async (req, res) => {
       include: [
         {
           model: ProductModel,
+          as: "products",
           through: {
             attributes: ["id", "cantidad_reservada", "estado"],
           },
@@ -335,6 +370,37 @@ export const updateProject = async (req, res) => {
       );
     }
 
+    // Calcular nuevo costo si hay cambios en los productos
+    let nuevoCosto = parseFloat(project.costo) || 0;
+
+    if (productos && productos.length > 0) {
+      nuevoCosto = 0; // Recalcular todo el costo
+
+      for (const prod of productos) {
+        if (!prod.product_id || !prod.cantidad_requerida) {
+          throw new Error("Datos de producto incompletos");
+        }
+
+        // NUEVO: Validar que la cantidad sea mayor a cero
+        if (prod.cantidad_requerida <= 0) {
+          throw new Error(
+            `La cantidad requerida debe ser mayor a 0 para el producto ${prod.product_id}`
+          );
+        }
+
+        const producto = await ProductModel.findByPk(prod.product_id, {
+          transaction,
+        });
+
+        if (!producto) {
+          throw new Error(`Producto ${prod.product_id} no encontrado`);
+        }
+
+        // Sumar al costo total
+        nuevoCosto += producto.precio * prod.cantidad_requerida;
+      }
+    }
+
     await project.update(
       {
         nombre,
@@ -342,7 +408,7 @@ export const updateProject = async (req, res) => {
         fecha_inicio,
         fecha_entrega,
         client_id,
-        presupuesto,
+        costo: nuevoCosto,
       },
       { transaction }
     );
@@ -397,6 +463,7 @@ export const updateProject = async (req, res) => {
       include: [
         {
           model: ProductModel,
+          as: "products",
           through: {
             attributes: [
               "cantidad_requerida",
@@ -409,6 +476,7 @@ export const updateProject = async (req, res) => {
         },
         {
           model: Client,
+          as: "client",
         },
       ],
     });
@@ -432,6 +500,7 @@ export const deleteProject = async (req, res) => {
       include: [
         {
           model: ProductModel,
+          as: "products",
           through: ProjectProduct,
         },
       ],
@@ -487,16 +556,17 @@ export const updateProjectStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { estado, motivo, notas } = req.body;
-    const userId = req.userId || req.user.id;
+    const userId = req.userId || req.user?.id;
 
     if (!userId) {
-      throw new Error('Usuario no autenticado');
+      throw new Error("Usuario no autenticado");
     }
 
     const project = await ProjectModel.findByPk(id, {
       include: [
         {
           model: ProductModel,
+          as: "products",
           through: {
             attributes: [
               "id",
@@ -508,12 +578,14 @@ export const updateProjectStatus = async (req, res) => {
         },
         {
           model: Client,
+          as: "client",
         },
       ],
       transaction,
     });
 
     if (!project) {
+      await transaction.rollback();
       return res.status(404).json({ message: "Proyecto no encontrado" });
     }
 
@@ -528,12 +600,14 @@ export const updateProjectStatus = async (req, res) => {
     };
 
     if (!transicionesValidas[estadoAnterior].includes(estado)) {
-      throw new Error(
-        `No se puede cambiar el estado de ${estadoAnterior} a ${estado}`
-      );
+      await transaction.rollback();
+      return res.status(400).json({
+        message: `No se puede cambiar el estado de ${estadoAnterior} a ${estado}`,
+      });
     }
 
-    // Si el proyecto se está completando
+    let inventoryOut = null;
+
     if (estado === "COMPLETADO") {
       // Verificar que todos los productos requeridos estén disponibles
       for (const producto of project.products) {
@@ -547,10 +621,10 @@ export const updateProjectStatus = async (req, res) => {
             (producto.cantidad_reservada - projectProduct.cantidad_reservada);
 
           if (stockDisponible < cantidadPendiente) {
-            throw new Error(
-              `Stock insuficiente para completar el proyecto. ` +
-                `Faltantes en producto: ${producto.descripcion}`
-            );
+            await transaction.rollback();
+            return res.status(400).json({
+              message: `Stock insuficiente para completar el proyecto. Faltantes en producto: ${producto.descripcion}`,
+            });
           }
         }
       }
@@ -581,7 +655,7 @@ export const updateProjectStatus = async (req, res) => {
       let total = 0;
 
       // Crear salida de inventario
-      const inventoryOut = await InventoryOutModel.create(
+      inventoryOut = await InventoryOutModel.create(
         {
           codigo,
           user_id: userId,
@@ -598,15 +672,15 @@ export const updateProjectStatus = async (req, res) => {
           projectProduct.cantidad_requerida - projectProduct.cantidad_entregada;
 
         if (cantidadPendiente > 0) {
-          // Verificar stock disponible
           const stockDisponible =
             producto.cantidad -
             (producto.cantidad_reservada - projectProduct.cantidad_reservada);
 
           if (stockDisponible < cantidadPendiente) {
-            throw new Error(
-              `Stock insuficiente para el producto ${producto.descripcion}`
-            );
+            await transaction.rollback();
+            return res.status(400).json({
+              message: `Stock insuficiente para el producto ${producto.descripcion}`,
+            });
           }
 
           // Calcular subtotal
@@ -655,7 +729,7 @@ export const updateProjectStatus = async (req, res) => {
               cantidad: cantidadPendiente,
               estado_anterior: projectProduct.estado,
               estado_nuevo: "ENTREGADO",
-              usuario_id: req.userId,
+              usuario_id: userId,
             },
             { transaction }
           );
@@ -664,9 +738,7 @@ export const updateProjectStatus = async (req, res) => {
 
       // Actualizar total de la salida
       await inventoryOut.update({ total }, { transaction });
-    }
-
-    if (estado === "CANCELADO") {
+    } else if (estado === "CANCELADO") {
       // Liberar todas las reservas existentes
       for (const producto of project.products) {
         if (producto.project_products.cantidad_reservada > 0) {
@@ -692,7 +764,7 @@ export const updateProjectStatus = async (req, res) => {
               estado_anterior: producto.project_products.estado,
               estado_nuevo: "CANCELADO",
               motivo: motivo || "Cancelación del proyecto",
-              usuario_id: req.userId,
+              usuario_id: userId,
             },
             { transaction }
           );
@@ -712,37 +784,78 @@ export const updateProjectStatus = async (req, res) => {
     );
 
     await transaction.commit();
+    /* console.log("Transacción completada exitosamente"); */
 
-    // Obtener el proyecto actualizado con toda su información
-    const projectUpdated = await ProjectModel.findByPk(id, {
-      include: [
-        {
-          model: ProductModel,
-          through: {
-            attributes: [
-              "cantidad_requerida",
-              "cantidad_entregada",
-              "cantidad_reservada",
-              "estado",
-              "fecha_requerida",
-            ],
+    try {
+      /* console.log("Obteniendo proyecto actualizado..."); */
+      // Obtener el proyecto actualizado con toda su información
+      const projectUpdated = await ProjectModel.findByPk(id, {
+        include: [
+          {
+            model: ProductModel,
+            as: "products",
+            through: {
+              attributes: [
+                "cantidad_requerida",
+                "cantidad_entregada",
+                "cantidad_reservada",
+                "estado",
+                "fecha_requerida",
+              ],
+            },
           },
-        },
-        {
-          model: Client,
-        },
-      ],
-    });
+          {
+            model: Client,
+            as: "client",
+          },
+        ],
+      });
+      console.log("Proyecto actualizado obtenido correctamente");
 
-    res.json({
-      message: `Proyecto ${estado.toLowerCase()} exitosamente`,
-      project: projectUpdated,
-      ...(estado === "COMPLETADO" && { inventoryOut }),
-    });
+      console.log("Obteniendo datos de salida...");
+      // Si se completó el proyecto y generó una salida, obtenemos sus datos
+      let inventoryOutData = null;
+      if (estado === "COMPLETADO" && inventoryOut) {
+        inventoryOutData = await InventoryOutModel.findByPk(inventoryOut.id, {
+          include: [
+            {
+              model: ProductModel,
+              as: "productos",
+              through: {
+                attributes: ["cantidad", "subtotal"],
+              },
+            },
+          ],
+        });
+        /* console.log("Datos de salida obtenidos correctamente"); */
+      }
+
+      /* console.log("Preparando respuesta..."); */
+      const respuesta = {
+        message: `Proyecto ${estado.toLowerCase()} exitosamente`,
+        project: projectUpdated,
+        inventoryOut: inventoryOutData,
+      };
+      /* console.log("Respuesta preparada correctamente"); */
+
+      /* console.log("Enviando respuesta al cliente..."); */
+
+      return res.json({ respuesta });
+    } catch (secondaryError) {
+      console.error("Error después del commit:", secondaryError);
+      return res.json({
+        message: `Proyecto ${estado.toLowerCase()} exitosamente`,
+        projectId: id,
+        estado: estado,
+      });
+    }
   } catch (error) {
-    await transaction.rollback();
-    console.error("Error en updateProjectStatus:", error);
-    res.status(500).json({
+    // error en la transacción principal
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
+    /* console.error("Error en updateProjectStatus:", error); */
+    return res.status(500).json({
       message: error.message || "Error al actualizar el estado del proyecto",
     });
   }
@@ -767,6 +880,7 @@ export const getProjectsWithDeadlines = async (req, res) => {
       include: [
         {
           model: ProductModel,
+          as: "products",
           through: {
             where: {
               estado: {
@@ -777,6 +891,7 @@ export const getProjectsWithDeadlines = async (req, res) => {
         },
         {
           model: Client,
+          as: "client",
         },
       ],
     });
@@ -792,6 +907,13 @@ export const assignProductToProject = async (req, res) => {
   const transaction = await db.transaction();
   try {
     const { projectId, productId, cantidad, reservar } = req.body;
+
+    // Validar que la cantidad sea mayor a 0
+    if (!cantidad || cantidad <= 0) {
+      return res
+        .status(400)
+        .json({ message: "La cantidad debe ser mayor a 0" });
+    }
 
     const projectProduct = await ProjectProduct.findOne({
       where: { projectId, productId },
@@ -862,7 +984,7 @@ export const assignProductToProject = async (req, res) => {
     // Obtener datos actualizados
     const updatedProjectProduct = await ProjectProduct.findOne({
       where: { projectId, productId },
-      include: [ProductModel],
+      include: [{ ProductModel, as: "Product" }],
     });
 
     res.json({

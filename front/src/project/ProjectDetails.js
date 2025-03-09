@@ -316,6 +316,27 @@ const CompProjectDetails = () => {
         if (result.isConfirmed) {
           setSelectedProduct(product);
           setDeliveryDialogOpen(true);
+
+          // Establecer la cantidad máxima disponible para entrega
+          const cantidadDisponible = Math.min(
+            product.project_products.cantidad_requerida -
+              product.project_products.cantidad_entregada,
+            product.cantidad -
+              (product.cantidad_reservada -
+                product.project_products.cantidad_reservada)
+          );
+
+          // Pre-establecer la cantidad a entregar como el mínimo entre la cantidad pendiente y la cantidad reservada (si hay reserva)
+          const cantidadReservada =
+            product.project_products.cantidad_reservada || 0;
+          const cantidadPendiente =
+            product.project_products.cantidad_requerida -
+            product.project_products.cantidad_entregada;
+
+          // Priorizar usar las reservas existentes
+          setActionQuantity(
+            Math.min(cantidadReservada, cantidadPendiente) || 1
+          );
         }
       });
     } catch (error) {
@@ -814,8 +835,14 @@ const CompProjectDetails = () => {
                 : 0}
             </Typography>
             <Typography variant="body2" color="textSecondary" gutterBottom>
+              Cantidad reservada:{" "}
+              {selectedProduct
+                ? selectedProduct.project_products.cantidad_reservada
+                : 0}
+            </Typography>
+            <Typography variant="body2" color="textSecondary" gutterBottom>
               Precio unitario: Bs.{" "}
-              {selectedProduct?.Product?.precio?.toFixed(2) || "0.00"}
+              {parseFloat(selectedProduct?.precio || 0).toFixed(2)}
             </Typography>
             <TextField
               type="number"
@@ -832,10 +859,10 @@ const CompProjectDetails = () => {
                   : 1,
               }}
             />
-            {actionQuantity && selectedProduct?.Product?.precio && (
+            {actionQuantity && selectedProduct?.precio && (
               <Typography variant="body2" sx={{ mt: 1 }}>
                 Total: Bs.{" "}
-                {(actionQuantity * selectedProduct.Product.precio).toFixed(2)}
+                {(actionQuantity * selectedProduct.precio).toFixed(2)}
               </Typography>
             )}
           </Box>
@@ -981,7 +1008,7 @@ const CompProjectDetails = () => {
     </>
   );
 
-  // Main render
+  // render
   if (loading) return <Box p={3}>Cargando proyecto...</Box>;
   if (error) return <Alert severity="error">{error}</Alert>;
   if (!project) return <Alert severity="warning">Proyecto no encontrado</Alert>;

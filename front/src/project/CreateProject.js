@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../utils/api";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -26,7 +26,6 @@ const CompCreateProject = () => {
     fecha_entrega: "",
     client_id: "",
     direccion: "",
-    presupuesto: "",
     prioridad: "MEDIA",
   });
 
@@ -36,35 +35,50 @@ const CompCreateProject = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showSummary, setShowSummary] = useState(false);
+  const [costoTotal, setCostoTotal] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
+    const today = new Date();
+    const formattedDate = today.toISOString().split("T")[0];
+    setFormData((prev) => ({
+      ...prev,
+      fecha_inicio: formattedDate,
+    }));
+
     getProducts();
     getClients();
   }, []);
 
+  // calcular costo total basado en los productos seleccionados
+  useEffect(() => {
+    let costo = 0;
+    selectedProducts.forEach((prod) => {
+      const producto = productos.find(
+        (p) => p.id === parseInt(prod.product_id)
+      );
+      if (producto && prod.cantidad_requerida) {
+        costo +=
+          parseFloat(producto.precio) * parseInt(prod.cantidad_requerida);
+      }
+    });
+    setCostoTotal(costo);
+  }, [selectedProducts, productos]);
+
   const getProducts = async () => {
     try {
-      const token = localStorage.getItem("authToken");
-      const response = await axios.get("http://localhost:8000/products", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      /* const token = localStorage.getItem("authToken"); */
+      const response = await api.get("/products");
       setProductos(response.data);
     } catch (error) {
       console.error("Error al obtener productos:", error);
+      setError("Error al cargar productos");
     }
   };
 
   const getClients = async () => {
     try {
-      const token = localStorage.getItem("authToken");
-      const response = await axios.get("http://localhost:8000/clients", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await api.get("/clients");
       setClients(response.data);
       setLoading(false);
     } catch (error) {
@@ -78,7 +92,9 @@ const CompCreateProject = () => {
     const start = new Date(fecha_inicio);
     const end = new Date(fecha_entrega);
     const today = new Date();
+
     today.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
 
     if (start < today) {
       throw new Error("La fecha de inicio no puede ser anterior a hoy");
@@ -96,6 +112,12 @@ const CompCreateProject = () => {
     }
 
     selectedProducts.forEach((prod) => {
+      if (!prod.cantidad_requerida || prod.cantidad_requerida <= 0) {
+        throw new Error(
+          `La cantidad debe ser mayor a 0 para todos los productos`
+        );
+      }
+
       const product = productos.find((p) => p.id === parseInt(prod.product_id));
       if (!product) {
         throw new Error(`Producto no encontrado`);
@@ -122,7 +144,7 @@ const CompCreateProject = () => {
       ...selectedProducts,
       {
         product_id: "",
-        cantidad_requerida: "",
+        cantidad_requerida: 1,
         fecha_requerida: "",
         reservar: false,
       },
@@ -166,23 +188,25 @@ const CompCreateProject = () => {
 
   const store = async () => {
     try {
-      const token = localStorage.getItem("authToken");
-      if (!token) {
-        throw new Error("No hay token de autenticación");
-      }
+      setLoading(true);
 
-      const response = await axios.post(
-        "http://localhost:8000/projects",
+      /* const token = localStorage.getItem("authToken"); */
+      /*       if (!token) {
+        throw new Error("No hay token de autenticación");
+      } */
+
+      const response = await api.post(
+        "/projects",
         {
           ...formData,
           productos: selectedProducts,
-        },
-        {
+        }
+        /*         {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-        }
+        } */
       );
 
       Swal.fire({
@@ -199,6 +223,8 @@ const CompCreateProject = () => {
         title: "Error",
         text: error.response?.data?.message || "Error al crear el proyecto",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -212,6 +238,25 @@ const CompCreateProject = () => {
       disponible,
       reservado: product.cantidad_reservada || 0,
     };
+  };
+
+  // Calcular el precio unitario del producto
+  const getProductPrice = (productId) => {
+    const product = productos.find((p) => p.id === parseInt(productId));
+    return product ? parseFloat(product.precio) : 0;
+  };
+
+  // Obtener el subtotal de un producto seleccionado
+  const getProductSubtotal = (index) => {
+    const prod = selectedProducts[index];
+    const price = getProductPrice(prod.product_id);
+    const quantity = parseInt(prod.cantidad_requerida) || 0;
+    return price * quantity;
+  };
+
+  // Formatear número como moneda
+  const formatCurrency = (value) => {
+    return `Bs. ${parseFloat(value).toFixed(2)}`;
   };
 
   if (loading) return <div>Cargando...</div>;
@@ -310,15 +355,12 @@ const CompCreateProject = () => {
         <div className="row">
           <div className="col-md-6">
             <div className="mb-3">
-              <label className="form-label">Presupuesto</label>
+              <label className="form-label">Costo</label>
               <input
-                value={formData.presupuesto}
-                onChange={handleChange}
-                type="number"
-                name="presupuesto"
+                value={formatCurrency(costoTotal)}
+                type="text"
                 className="form-control"
-                min="0"
-                step="0.01"
+                readOnly
               />
             </div>
           </div>
@@ -419,6 +461,29 @@ const CompCreateProject = () => {
                     </div>
                   </div>
 
+                  {/*precio unitario y subtotal */}
+                  <div className="col-md-2">
+                    <div className="form-group">
+                      <label className="small d-block">Precio Unitario</label>
+                      <span className="form-control-plaintext">
+                        {product.product_id
+                          ? formatCurrency(getProductPrice(product.product_id))
+                          : "N/A"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="col-md-2">
+                    <div className="form-group">
+                      <label className="small d-block">Subtotal</label>
+                      <span className="form-control-plaintext">
+                        {product.product_id
+                          ? formatCurrency(getProductSubtotal(index))
+                          : "N/A"}
+                      </span>
+                    </div>
+                  </div>
+
                   <div className="col-md-2">
                     <input
                       type="date"
@@ -473,7 +538,7 @@ const CompCreateProject = () => {
                     )}
                   </div>
 
-                  <div className="col-md-2">
+                  <div className="col-md-1">
                     <Button
                       variant="contained"
                       color="error"
@@ -490,8 +555,13 @@ const CompCreateProject = () => {
         </div>
 
         <Stack direction="row" spacing={2} className="mt-3">
-          <Button variant="contained" color="primary" type="submit">
-            Crear Proyecto
+          <Button
+            variant="contained"
+            color="primary"
+            type="submit"
+            disabled={loading}
+          >
+            {loading ? "Procesando..." : "Crear Proyecto"}
           </Button>
           <Button variant="outlined" onClick={() => navigate("/projects")}>
             Cancelar
@@ -515,6 +585,9 @@ const CompCreateProject = () => {
           </Typography>
           <Typography variant="body2" gutterBottom>
             Fechas: {formData.fecha_inicio} - {formData.fecha_entrega}
+          </Typography>
+          <Typography variant="body2" gutterBottom>
+            Costo Total: {formatCurrency(costoTotal)}
           </Typography>
 
           <Typography variant="subtitle1" className="mt-3" gutterBottom>
@@ -563,8 +636,9 @@ const CompCreateProject = () => {
             }}
             variant="contained"
             color="primary"
+            disabled={loading}
           >
-            Confirmar y Crear
+            {loading ? "Procesando..." : "Confirmar y Crear"}
           </Button>
         </DialogActions>
       </Dialog>

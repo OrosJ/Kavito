@@ -1,23 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FaUserCircle, FaSignOutAlt, FaBars } from "react-icons/fa";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 import "../styles/Navbar.css";
+import { decodeToken } from "../utils/api";
 
 const Navbar = ({ onLogout, onToggleSidebar }) => {
-  const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || 'Usuario');
+  const [userRole, setUserRole] = useState("Usuario");
+  const [username, setUsername] = useState("");
   const [isDropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      try {
-        const decodedToken = JSON.parse(atob(token.split('.')[1]));
-        setUserRole(decodedToken.role || 'Usuario');
-      } catch (error) {
-        console.error('Error decoding token:', error);
-      }
+    const userData = decodeToken();
+    if (userData) {
+      setUserRole(userData.role || "Usuario");
+      setUsername(userData.username || "");
     }
 
     const handleClickOutside = (event) => {
@@ -26,45 +24,62 @@ const Navbar = ({ onLogout, onToggleSidebar }) => {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleLogout = (e) => {
     e.preventDefault(); // Prevenimos cualquier comportamiento por defecto
     e.stopPropagation(); // Evitamos la propagación del evento
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userRole');
-    if (typeof onLogout === 'function') {
+
+    localStorage.removeItem("authToken");
+
+    if (typeof onLogout === "function") {
       onLogout();
     }
-    navigate('/login');
+
+    navigate("/login");
+  };
+
+  // formatear el rol para mostrar (primera letra mayúscula)
+  const formatRole = (role) => {
+    if (!role) return "Usuario";
+    return role.charAt(0).toUpperCase() + role.slice(1);
   };
 
   return (
     <nav className="nav-navbar nav-navbar-responsive">
       <div className="nav-navbar-content">
-      <button onClick={() => {onToggleSidebar();}}>
+        <button
+          onClick={() => {
+            onToggleSidebar();
+          }}
+        >
           <FaBars /> {/* Icono de menú hamburguesa */}
         </button>
         <div className="nav-user-section" ref={dropdownRef}>
-        <div 
+          <div
             className="nav-user-info"
-            onClick={() => {setDropdownOpen(!isDropdownOpen);}}
+            onClick={() => {
+              setDropdownOpen(!isDropdownOpen);
+            }}
           >
-            <span className="nav-user-name">Bienvenido, {userRole}</span>
+            <span className="nav-user-name">
+              {username ? `Hola, ${username}` : "Bienvenido"}
+              <small className="ms-2 text-muted">
+                ({formatRole(userRole)})
+              </small>
+            </span>
             <FaUserCircle className="nav-user-icon" />
           </div>
 
           {isDropdownOpen && (
             <div className="nav-dropdown-menu">
-              <div className="nav-dropdown-header">
-                
-              </div>
-              <button 
-                className="nav-logout-button" 
+              <div className="nav-dropdown-header"></div>
+              <button
+                className="nav-logout-button"
                 onClick={handleLogout}
-                type="button" // Añadimos esto para mayor claridad
+                type="button"
               >
                 <span>Cerrar sesión</span>
                 <FaSignOutAlt size={16} />

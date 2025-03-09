@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { MaterialReactTable } from "material-react-table";
 import { Button, IconButton, Tooltip, Box } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import Swal from "sweetalert2";
+import api from "../utils/api"; 
 
 const mostrarMensaje = (tipo, titulo, texto) => {
   Swal.fire({
@@ -24,6 +25,9 @@ const URI = "http://localhost:8000/users/";
 
 const CompShowUsers = () => {
   const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     getUsers();
@@ -31,21 +35,21 @@ const CompShowUsers = () => {
 
   const getUsers = async () => {
     try {
-      const token = localStorage.getItem("authToken");
-      if (!token) {
-        console.log("No se encontró el token. Redirigiendo al login...");
-        return;
-      }
-
-      const res = await axios.get(URI, {
-        headers: {
-          Authorization: `Bearer ${token}`, //token en los headers
-        },
-      });
-
+      setLoading(true);
+      const res = await api.get("/users");
       setUsers(res.data);
+      setError(null);
     } catch (error) {
       console.error("Error al obtener los usuarios:", error);
+      if (error.response && error.response.status === 403) {
+        // Si es un error de permisos
+        mostrarMensaje('error', 'Acceso denegado', 'No tienes permisos para acceder a esta sección');
+        navigate('/');
+      } else {
+        setError("No se pudieron cargar los usuarios. Verifica tus permisos o la conexión.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -60,9 +64,10 @@ const CompShowUsers = () => {
       confirmButtonText: "¡Sí, eliminar!",
       cancelButtonText: "Cancelar",
     });
+
     if (result.isConfirmed) {
       try {
-        await axios.delete(`${URI}${id}`);
+        await api.delete(`${URI}${id}`);
         getUsers();
         mostrarMensaje('success', '¡Eliminado!', 'El usuario ha sido eliminado correctamente.');
       } catch (error) {
@@ -95,6 +100,16 @@ const CompShowUsers = () => {
     []
   );
 
+  if (error) {
+    return (
+      <div className="container mt-5">
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container">
       <h2>Usuarios</h2>
@@ -116,6 +131,7 @@ const CompShowUsers = () => {
               columns={columns}
               data={users}
               enableRowActions
+              state={{ isLoading: loading }}
               renderRowActions={({ row }) => (
                 <Box sx={{ display: "flex", gap: "0.5rem" }}>
                   <Tooltip title="Editar">

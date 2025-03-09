@@ -17,14 +17,29 @@ const mostrarMensaje = (tipo, titulo, texto) => {
   });
 };
 
+// Función para decodificar el token JWT y extraer su información
+const decodeToken = (token) => {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(window.atob(base64));
+  } catch (error) {
+    console.error("Error decodificando token:", error);
+    return null;
+  }
+};
+
 const Login = ({ setIsAuthenticated }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
 
     try {
       Swal.fire({
@@ -42,17 +57,46 @@ const Login = ({ setIsAuthenticated }) => {
 
       const { token } = response.data;
 
+      if (!token) {
+        throw new Error("No se recibió token en la respuesta");
+      }
+
+      // Decodificar el token para obtener información del usuario
+      const decodedToken = decodeToken(token);
+
+      if (!decodedToken) {
+        throw new Error("Error al procesar la respuesta del servidor");
+      }
+
       // Guardar el token en el localStorage
       localStorage.setItem("authToken", token);
+
       // Actualizar el estado de autenticación en App.js
       setIsAuthenticated(true);
+
       Swal.close(); // Cerrar loading
-      mostrarMensaje("success", "¡Bienvenido!", "Inicio de sesión exitoso");
+      mostrarMensaje(
+        "success",
+        "¡Bienvenido!",
+        `Sesión iniciada como ${decodedToken.username || "usuario"}`
+      );
 
       // Redirigir a la página de inicio
       navigate("/");
     } catch (error) {
-      mostrarMensaje('error', 'Error', 'Credenciales incorrectas. Por favor, verifica tus datos.');
+      Swal.close();
+      console.error("Error de login:", error);
+      setError(
+        error.response?.data?.msg ||
+          "Credenciales incorrectas. Por favor, verifica tus datos."
+      );
+      mostrarMensaje(
+        "error",
+        "Error",
+        "Credenciales incorrectas. Por favor, verifica tus datos."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -75,6 +119,7 @@ const Login = ({ setIsAuthenticated }) => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+              disabled={loading}
             />
           </div>
 
@@ -89,11 +134,12 @@ const Login = ({ setIsAuthenticated }) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={loading}
             />
           </div>
 
           <button type="submit" className="btn btn-primary w-100">
-            Iniciar sesión
+          {loading ? "Procesando..." : "Iniciar sesión"}
           </button>
         </form>
       </div>

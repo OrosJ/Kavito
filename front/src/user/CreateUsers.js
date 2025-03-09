@@ -2,6 +2,7 @@ import axios from 'axios';
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Swal from "sweetalert2";
+import api from "../utils/api";
 
 const mostrarMensaje = (tipo, titulo, texto) => {
   Swal.fire({
@@ -26,23 +27,36 @@ const CompCreateUser = () => {
     password: '',
     role: 'vendedor',
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   // Si hay un id, obtenemos los datos del usuario para editar
   useEffect(() => {
     if (id) {
-      const getUserData = async () => {
-        try {
-          const res = await axios.get(`${URI}${id}`);
-          setUserData(res.data);
-        } catch (error) {
-          console.error('Error al obtener los datos del usuario:', error);
-          alert('Error al obtener los datos del usuario');
-        }
-      };
       getUserData();
     }
   }, [id]);
+
+  const getUserData = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get(`/users/${id}`);
+      const { password, ...restUserData } = res.data;
+      setUserData(restUserData);
+      setError('');
+    } catch (error) {
+      console.error('Error al obtener los datos del usuario:', error);
+      if (error.response && error.response.status === 403) {
+        mostrarMensaje('error', 'Acceso denegado', 'No tienes permisos para editar usuarios');
+        navigate('/');
+      } else {
+        setError('Error al obtener los datos del usuario');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Manejo de cambios en el formulario
   const handleInputChange = (e) => {
@@ -56,20 +70,29 @@ const CompCreateUser = () => {
   // Manejo de la acción de submit (creación o edición de usuario)
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+
     try {
       if (id) {
         // Editar usuario existente (PUT)
-        await axios.put(`${URI}${id}`, userData);
+        await api.put(`${URI}${id}`, userData);
         mostrarMensaje('success', '¡Editado!', 'Datos de usuario actualizados correctamente.');
       } else {
         // Crear nuevo usuario (POST)
-        await axios.post(`${URI}register`, userData);
+        await api.post(`${URI}register`, userData);
         mostrarMensaje('success', '¡Creado!', 'Usuario creado correctamente.');
       }
       navigate('/users'); // Redirigir a la lista de usuarios
     } catch (error) {
       console.error('Hubo un error:', error);
-      alert('Error al guardar el usuario');
+      if (error.response && error.response.status === 403) {
+        mostrarMensaje('error', 'Acceso denegado', 'No tienes permisos para esta acción');
+        navigate('/');
+      } else {
+        mostrarMensaje('error', 'Error', error.response?.data?.message || 'Error al guardar el usuario');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -87,6 +110,7 @@ const CompCreateUser = () => {
             value={userData.username}
             onChange={handleInputChange}
             required
+            disabled={loading}
           />
         </div>
         <div className="mb-3">
@@ -99,10 +123,12 @@ const CompCreateUser = () => {
             value={userData.email}
             onChange={handleInputChange}
             required
+            disabled={loading}
           />
         </div>
         <div className="mb-3">
           <label htmlFor="password" className="form-label">Contraseña</label>
+          {id && ' (Dejar en blanco para mantener la actual)'}
           <input
             type="password"
             className="form-control"
@@ -111,6 +137,7 @@ const CompCreateUser = () => {
             value={userData.password}
             onChange={handleInputChange}
             required={!id} // Solo es obligatorio si estamos creando un nuevo usuario
+            disabled={loading}
           />
         </div>
         <div className="mb-3">
@@ -122,13 +149,14 @@ const CompCreateUser = () => {
             value={userData.role}
             onChange={handleInputChange}
             required
+            disabled={loading}
           >
             <option value="vendedor">Vendedor</option>
             <option value="administrador">Administrador</option>
           </select>
         </div>
-        <button type="submit" className="btn btn-primary">
-          {id ? 'Actualizar Usuario' : 'Crear Usuario'}
+        <button type="submit" className="btn btn-primary" disabled={loading}> 
+        {loading ? 'Procesando...' : (id ? 'Actualizar Usuario' : 'Crear Usuario')}
         </button>
       </form>
     </div>

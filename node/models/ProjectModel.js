@@ -31,7 +31,10 @@ const ProjectModel = db.define("projects", {
     defaultValue: 'PLANIFICACION'
   },
   direccion: DataTypes.STRING,
-  presupuesto: DataTypes.DECIMAL(10, 2),
+  costo: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0
+  },
   prioridad: {
     type: DataTypes.ENUM('BAJA', 'MEDIA', 'ALTA'),
     defaultValue: 'MEDIA'
@@ -40,11 +43,5 @@ const ProjectModel = db.define("projects", {
   motivo_cancelacion: DataTypes.STRING,
   notas_cierre: DataTypes.TEXT
 });
-
-
-ProjectModel.belongsToMany(ProductModel, { through: ProjectProduct });
-ProductModel.belongsToMany(ProjectModel, { through: ProjectProduct });
-ProjectModel.belongsTo(ClientModel, { foreignKey: 'client_id' });
-ClientModel.hasMany(ProjectModel, { foreignKey: 'client_id' });
 
 export default ProjectModel;

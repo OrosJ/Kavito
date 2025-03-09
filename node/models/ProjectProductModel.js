@@ -50,7 +50,7 @@ const ProjectProduct = db.define("project_products", {
     type: DataTypes.ENUM(
       'PENDIENTE',
       'RESERVADO',
-      'EN_PROCESO',
+      'EN PROCESO',
       'ENTREGADO',
       'CANCELADO'
     ),
@@ -101,22 +101,6 @@ const ProjectProductHistory = db.define("project_product_histories", {
     type: DataTypes.INTEGER,
     allowNull: true
   }
-});
-
-// Relaciones
-ProjectProduct.hasMany(ProjectProductHistory, {
-  foreignKey: 'project_product_id',
-  onDelete: 'CASCADE'
-});
-
-ProjectProductHistory.belongsTo(ProjectProduct, {
-  foreignKey: 'project_product_id'
-});
-
-// Relación con ProductModel (esta sí podemos hacerla directamente)
-ProjectProduct.belongsTo(ProductModel, { 
-  foreignKey: 'productId',
-  as: 'Product'
 });
 
 export { ProjectProduct, ProjectProductHistory };

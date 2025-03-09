@@ -10,13 +10,14 @@ import InventoryOutModel, {
 import { Op } from "sequelize";
 import db from "../database/db.js";
 
-// Obtener ProductProduct por ID
+// Obtener Product por ID
 export const getProjectProduct = async (req, res) => {
   try {
     const projectProduct = await ProjectProduct.findByPk(req.params.id, {
       include: [
         {
           model: ProductModel,
+          as: "productItem",
           attributes: ["descripcion", "precio"],
         },
         {
@@ -46,7 +47,12 @@ export const updateProjectProduct = async (req, res) => {
     const { cantidad_entregada, estado, notas } = req.body;
 
     const projectProduct = await ProjectProduct.findByPk(id, {
-      include: [ProductModel],
+      include: [
+        {
+          model: ProductModel,
+          as: "productitem",
+        },
+      ],
       transaction,
       lock: true,
     });
@@ -102,7 +108,12 @@ export const deliverProducts = async (req, res) => {
     const { cantidad } = req.body;
 
     const projectProduct = await ProjectProduct.findByPk(id, {
-      include: [ProductModel],
+      include: [
+        {
+          model: ProductModel,
+          as: "productItem",
+        },
+      ],
       transaction,
       lock: true,
     });
@@ -185,8 +196,20 @@ export const reserveAdditional = async (req, res) => {
     const { id } = req.params;
     const { cantidad } = req.body;
 
+    // Validación para no permitir reservas de 0
+    if (!cantidad || cantidad <= 0) {
+      return res
+        .status(400)
+        .json({ message: "La cantidad a reservar debe ser mayor a 0" });
+    }
+
     const projectProduct = await ProjectProduct.findByPk(id, {
-      include: [ProductModel],
+      include: [
+        {
+          model: ProductModel,
+          as: "productitem",
+        },
+      ],
       transaction,
       lock: true,
     });
@@ -199,8 +222,8 @@ export const reserveAdditional = async (req, res) => {
 
     // Verificar disponibilidad en stock
     const disponible =
-      projectProduct.Product.cantidad -
-      projectProduct.Product.cantidad_reservada;
+      projectProduct.productItem.cantidad -
+      projectProduct.productItem.cantidad_reservada;
     if (disponible < cantidad) {
       throw new Error("Stock insuficiente para reserva adicional");
     }
@@ -211,7 +234,7 @@ export const reserveAdditional = async (req, res) => {
       transaction,
     });
 
-    await projectProduct.Product.increment("cantidad_reservada", {
+    await projectProduct.productItem.increment("cantidad_reservada", {
       by: cantidad,
       transaction,
     });
@@ -249,12 +272,19 @@ export const reserveProjectProduct = async (req, res) => {
 
     /* console.log('Iniciando reserva:', { id, cantidad }); */
 
+    // Validación para no permitir reservas de 0
+    if (!cantidad || cantidad <= 0) {
+      return res
+        .status(400)
+        .json({ message: "La cantidad a reservar debe ser mayor a 0" });
+    }
+
     const projectProduct = await ProjectProduct.findOne({
       where: { id },
       include: [
         {
           model: ProductModel,
-          as: "Product",
+          as: "productItem",
           required: true, // Esto asegura un INNER JOIN en lugar de LEFT JOIN
           attributes: ["id", "descripcion", "cantidad", "cantidad_reservada"],
         },
@@ -269,11 +299,11 @@ export const reserveProjectProduct = async (req, res) => {
     }
 
     // Verificar si el producto está incluido correctamente
-    if (!projectProduct.Product) {
+    if (!projectProduct.productItem) {
       throw new Error("Producto no encontrado en la relación");
     }
 
-    const product = projectProduct.Product;
+    const product = projectProduct.productItem;
     /* console.log('Producto encontrado:', product); */
 
     // Verificar explícitamente los valores
@@ -281,7 +311,7 @@ export const reserveProjectProduct = async (req, res) => {
     const reservadaActual = Number(product.cantidad_reservada) || 0;
     const disponible = cantidadActual - reservadaActual;
 
-    /*     console.log('Valores de stock:', {
+    /*console.log('Valores de stock:', {
       cantidadActual,
       reservadaActual,
       disponible,
@@ -333,8 +363,14 @@ export const reserveProjectProduct = async (req, res) => {
       include: [
         {
           model: ProductModel,
-          as: "Product",
-          attributes: ["id", "descripcion", "cantidad", "cantidad_reservada"],
+          as: "productItem",
+          attributes: [
+            "id",
+            "descripcion",
+            "cantidad",
+            "cantidad_reservada",
+            "precio",
+          ],
         },
       ],
     });
@@ -352,19 +388,30 @@ export const reserveProjectProduct = async (req, res) => {
   }
 };
 
-// Deliver project product with inventory output integration
+// entregas con integracion de salidas de inventario
 export const deliverProjectProduct = async (req, res) => {
   const transaction = await db.transaction();
   try {
     const { id } = req.params;
     const { cantidad } = req.body;
 
+    // Validación para no permitir entregas de 0
+    if (!cantidad || cantidad <= 0) {
+      return res
+        .status(400)
+        .json({ message: "La cantidad a entregar debe ser mayor a 0" });
+    }
+
     const projectProduct = await ProjectProduct.findOne({
-      where:{id},
+      where: { id },
       include: [
         {
           model: ProductModel,
-          as: 'Product',
+          as: "productItem",
+        },
+        {
+          model: ProjectModel,
+          as: "projectItem",
         },
       ],
       transaction,
@@ -403,13 +450,15 @@ export const deliverProjectProduct = async (req, res) => {
     }
 
     const codigo = `S${year}${month}${day}${secuencial}`;
-    const subtotal = parseFloat(projectProduct.Product.precio) * cantidad;
+
+    const precio = parseFloat(projectProduct.productItem?.precio || 0);
+    const subtotal = precio * cantidad;
 
     const inventoryOut = await InventoryOutModel.create(
       {
         codigo,
-        user_id: req.userId || req.user.id, 
-        obs: `Salida por proyecto: ${projectProduct.Project.nombre} (ID: ${projectProduct.Project.id})`,
+        user_id: req.userId || req.user?.id,
+        obs: `Salida por proyecto: ${projectProduct.Project.nombre || ''} (ID: ${projectProduct.projectitem?.id || ''})`,
         total: subtotal,
       },
       { transaction }
@@ -425,7 +474,7 @@ export const deliverProjectProduct = async (req, res) => {
       { transaction }
     );
 
-    await projectProduct.Product.decrement("cantidad", {
+    await projectProduct.productItem.decrement("cantidad", {
       by: cantidad,
       transaction,
     });
@@ -435,7 +484,7 @@ export const deliverProjectProduct = async (req, res) => {
         cantidad,
         projectProduct.cantidad_reservada
       );
-      await projectProduct.Product.decrement("cantidad_reservada", {
+      await projectProduct.productItem.decrement("cantidad_reservada", {
         by: cantidadADesreservar,
         transaction,
       });
@@ -450,11 +499,12 @@ export const deliverProjectProduct = async (req, res) => {
       transaction,
     });
 
-    const nuevaCantidadEntregada = projectProduct.cantidad_entregada + cantidad;
+    const nuevaCantidadEntregada =
+      projectProduct.cantidad_entregada + parseInt(cantidad);
     const nuevoEstado =
       nuevaCantidadEntregada >= projectProduct.cantidad_requerida
         ? "ENTREGADO"
-        : "EN_PROCESO";
+        : "EN PROCESO";
 
     await projectProduct.update(
       {
@@ -478,10 +528,41 @@ export const deliverProjectProduct = async (req, res) => {
 
     await transaction.commit();
 
+    // Obtener los datos actualizados incluyendo el precio del producto
+    const updatedProjectProduct = await ProjectProduct.findByPk(id, {
+      include: [
+        {
+          model: ProductModel,
+          as: "productItem",
+          attributes: [
+            "id",
+            "descripcion",
+            "cantidad",
+            "cantidad_reservada",
+            "precio",
+          ],
+        },
+      ],
+    });
+
+    // Incluir el precio en la respuesta
+    const inventoryOutData = await InventoryOutModel.findByPk(inventoryOut.id, {
+      include: [
+        {
+          model: ProductModel,
+          as: "productos",
+          through: {
+            attributes: ["cantidad", "subtotal"],
+          },
+        },
+      ],
+    });
+
     res.json({
       message: "Entrega realizada correctamente",
-      projectProduct,
-      inventoryOut,
+      projectProduct: updatedProjectProduct,
+      precio: precio,
+      inventoryOut: inventoryOutData,
     });
   } catch (error) {
     await transaction.rollback();
@@ -496,7 +577,7 @@ export const releaseReservation = async (req, res) => {
       include: [
         {
           model: ProductModel,
-          as: "Product",
+          as: "productItem",
         },
       ],
       transaction,
@@ -543,13 +624,4 @@ export const releaseReservation = async (req, res) => {
     await transaction.rollback();
     res.status(500).json({ message: error.message });
   }
-};
-
-export default {
-  getProjectProduct,
-  updateProjectProduct,
-  getHistory,
-  reserveProjectProduct,
-  deliverProjectProduct,
-  releaseReservation,
 };
