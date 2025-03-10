@@ -810,11 +810,13 @@ export const updateProjectStatus = async (req, res) => {
           },
         ],
       });
-      console.log("Proyecto actualizado obtenido correctamente");
 
-      console.log("Obteniendo datos de salida...");
+      /*console.log("Proyecto actualizado obtenido correctamente");
+      console.log("Obteniendo datos de salida..."); */
+
       // Si se completó el proyecto y generó una salida, obtenemos sus datos
       let inventoryOutData = null;
+
       if (estado === "COMPLETADO" && inventoryOut) {
         inventoryOutData = await InventoryOutModel.findByPk(inventoryOut.id, {
           include: [
@@ -998,4 +1000,4 @@ export const assignProductToProject = async (req, res) => {
       message: error.message || "Error al asignar producto al proyecto",
     });
   }
-};
+}; 
