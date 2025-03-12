@@ -30,7 +30,7 @@ export const setupAssociations = () => {
 
   ProjectProduct.belongsTo(ProjectModel, {
     foreignKey: "projectId",
-    as: "projectItem", // Alias utilizado en los controladores
+    as: "projectItem", // Alias
   });
 
   // Asociaciones para ProjectProductHistory

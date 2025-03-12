@@ -349,7 +349,7 @@ const CompProjectDetails = () => {
       if (!selectedProduct || !actionQuantity) return;
 
       const response = await axios.post(
-        `http://localhost:8000/project-products/${selectedProduct.project_products.id}/deliver`,
+        `http://localhost:8000/project-products/${selectedProduct.project_products.id}/deliver-p`,
         { cantidad: parseInt(actionQuantity) },
         {
           headers: {
@@ -358,7 +358,22 @@ const CompProjectDetails = () => {
         }
       );
 
-      setLatestDeliveryOut(response.data.inventoryOut);
+      // Manejo flexible de la estructura de respuesta
+      console.log("Respuesta completa:", response.data);
+
+      // Intentar obtener inventoryOut de diferentes estructuras posibles
+      const inventoryOut =
+        response.data.respuesta?.inventoryOut ||
+        response.data.inventoryOut ||
+        response.data;
+
+      // Verificar que tenemos los datos necesarios
+      if (!inventoryOut || !inventoryOut.codigo) {
+        console.error("Estructura de respuesta inesperada:", response.data);
+        throw new Error("No se pudo obtener la información de la salida");
+      }
+
+      setLatestDeliveryOut(inventoryOut);
       getProject();
       setSelectedProduct(null);
       setDeliveryDialogOpen(false);
@@ -370,11 +385,12 @@ const CompProjectDetails = () => {
         html: `
           <p>Se han entregado los productos correctamente</p>
           <p>Salida de inventario generada:</p>
-          <p>Código: ${response.data.inventoryOut.codigo}</p>
-          <p>Total: Bs. ${response.data.inventoryOut.total.toFixed(2)}</p>
+          <p>Código: ${inventoryOut.codigo}</p>
+          <p>Total: Bs. ${parseFloat(inventoryOut.total).toFixed(2)}</p>
         `,
       });
     } catch (error) {
+      console.error("Error completo:", error);
       Swal.fire({
         icon: "error",
         title: "Error",

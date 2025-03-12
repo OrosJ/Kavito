@@ -7,7 +7,7 @@ import ProductModel from "../models/ProductModel.js";
 import InventoryOutModel, {
   InventoryOutProduct,
 } from "../models/InvOutModel.js";
-import Client from "../models/ClientModel.js";
+import ClientModel from "../models/ClientModel.js";
 import { Op } from "sequelize";
 import db from "../database/db.js";
 
@@ -31,7 +31,7 @@ export const getProjects = async (req, res) => {
           },
         },
         {
-          model: Client,
+          model: ClientModel,
           as: "client",
         },
       ],
@@ -67,7 +67,7 @@ export const getProject = async (req, res) => {
           },
         },
         {
-          model: Client,
+          model: ClientModel,
           as: "client",
         },
       ],
@@ -151,7 +151,7 @@ export const createProject = async (req, res) => {
     }
 
     // Validar cliente
-    const client = await Client.findByPk(client_id);
+    const client = await ClientModel.findByPk(client_id);
     if (!client) {
       throw new Error(`Cliente con ID ${client_id} no encontrado`);
     }
@@ -313,7 +313,7 @@ export const createProject = async (req, res) => {
           },
         },
         {
-          model: Client,
+          model: ClientModel,
           as: "client",
         },
       ],
@@ -475,7 +475,7 @@ export const updateProject = async (req, res) => {
           },
         },
         {
-          model: Client,
+          model: ClientModel,
           as: "client",
         },
       ],
@@ -553,6 +553,8 @@ export const deleteProject = async (req, res) => {
 // Actualizar estado del proyecto
 export const updateProjectStatus = async (req, res) => {
   const transaction = await db.transaction();
+  let inventoryOut = null;
+  
   try {
     const { id } = req.params;
     const { estado, motivo, notas } = req.body;
@@ -577,7 +579,7 @@ export const updateProjectStatus = async (req, res) => {
           },
         },
         {
-          model: Client,
+          model: ClientModel,
           as: "client",
         },
       ],
@@ -606,10 +608,9 @@ export const updateProjectStatus = async (req, res) => {
       });
     }
 
-    let inventoryOut = null;
-
+    // Procesar cambio de estado
     if (estado === "COMPLETADO") {
-      // Verificar que todos los productos requeridos estén disponibles
+      // Verificar disponibilidad de productos
       for (const producto of project.products) {
         const projectProduct = producto.project_products;
         const cantidadPendiente =
@@ -629,7 +630,7 @@ export const updateProjectStatus = async (req, res) => {
         }
       }
 
-      // Generar salida de inventario
+      // Generar salida de inventario si hay productos pendientes
       const fecha = new Date();
       const year = fecha.getFullYear().toString().substr(-2);
       const month = (fecha.getMonth() + 1).toString().padStart(2, "0");
@@ -653,91 +654,96 @@ export const updateProjectStatus = async (req, res) => {
 
       const codigo = `S${year}${month}${day}${secuencial}`;
       let total = 0;
+      let requiereInventoryOut = false;
 
-      // Crear salida de inventario
-      inventoryOut = await InventoryOutModel.create(
-        {
-          codigo,
-          user_id: userId,
-          obs: `Salida por finalización de proyecto: ${project.nombre} (ID: ${project.id})`,
-          total: 0, // Se actualizará después de procesar todos los productos
-        },
-        { transaction }
-      );
-
-      // Procesar cada producto del proyecto
+      // Verificar si hay productos pendientes por entregar
       for (const producto of project.products) {
         const projectProduct = producto.project_products;
         const cantidadPendiente =
           projectProduct.cantidad_requerida - projectProduct.cantidad_entregada;
-
         if (cantidadPendiente > 0) {
-          const stockDisponible =
-            producto.cantidad -
-            (producto.cantidad_reservada - projectProduct.cantidad_reservada);
-
-          if (stockDisponible < cantidadPendiente) {
-            await transaction.rollback();
-            return res.status(400).json({
-              message: `Stock insuficiente para el producto ${producto.descripcion}`,
-            });
-          }
-
-          // Calcular subtotal
-          const subtotal = parseFloat(producto.precio) * cantidadPendiente;
-          total += subtotal;
-
-          // Registrar en salida
-          await InventoryOutProduct.create(
-            {
-              invout_id: inventoryOut.id,
-              product_id: producto.id,
-              cantidad: cantidadPendiente,
-              subtotal: subtotal,
-            },
-            { transaction }
-          );
-
-          // Actualizar stock y reservas
-          await producto.decrement("cantidad", {
-            by: cantidadPendiente,
-            transaction,
-          });
-
-          if (projectProduct.cantidad_reservada > 0) {
-            await producto.decrement("cantidad_reservada", {
-              by: projectProduct.cantidad_reservada,
-              transaction,
-            });
-          }
-
-          // Actualizar estado del producto en el proyecto
-          await projectProduct.update(
-            {
-              estado: "ENTREGADO",
-              cantidad_entregada: projectProduct.cantidad_requerida,
-              cantidad_reservada: 0,
-            },
-            { transaction }
-          );
-
-          // Registrar en historial
-          await ProjectProductHistory.create(
-            {
-              project_product_id: projectProduct.id,
-              tipo_cambio: "ENTREGA",
-              cantidad: cantidadPendiente,
-              estado_anterior: projectProduct.estado,
-              estado_nuevo: "ENTREGADO",
-              usuario_id: userId,
-            },
-            { transaction }
-          );
+          requiereInventoryOut = true;
+          break;
         }
       }
 
-      // Actualizar total de la salida
-      await inventoryOut.update({ total }, { transaction });
+      // Solo crear salida si hay productos pendientes
+      if (requiereInventoryOut) {
+        // Crear salida de inventario
+        inventoryOut = await InventoryOutModel.create(
+          {
+            codigo,
+            user_id: userId,
+            obs: `Salida por finalización de proyecto: ${project.nombre} (ID: ${project.id})`,
+            total: 0,
+          },
+          { transaction }
+        );
+
+        // Procesar productos pendientes
+        for (const producto of project.products) {
+          const projectProduct = producto.project_products;
+          const cantidadPendiente =
+            projectProduct.cantidad_requerida - projectProduct.cantidad_entregada;
+
+          if (cantidadPendiente > 0) {
+            const subtotal = parseFloat(producto.precio) * cantidadPendiente;
+            total += subtotal;
+
+            // Registrar en salida
+            await InventoryOutProduct.create(
+              {
+                invout_id: inventoryOut.id,
+                product_id: producto.id,
+                cantidad: cantidadPendiente,
+                subtotal: subtotal,
+              },
+              { transaction }
+            );
+
+            // Actualizar stock y reservas
+            await producto.decrement("cantidad", {
+              by: cantidadPendiente,
+              transaction,
+            });
+
+            if (projectProduct.cantidad_reservada > 0) {
+              await producto.decrement("cantidad_reservada", {
+                by: projectProduct.cantidad_reservada,
+                transaction,
+              });
+            }
+
+            // Actualizar estado del producto en el proyecto
+            await projectProduct.update(
+              {
+                estado: "ENTREGADO",
+                cantidad_entregada: projectProduct.cantidad_requerida,
+                cantidad_reservada: 0,
+              },
+              { transaction }
+            );
+
+            // Registrar en historial
+            await ProjectProductHistory.create(
+              {
+                project_product_id: projectProduct.id,
+                tipo_cambio: "ENTREGA",
+                cantidad: cantidadPendiente,
+                estado_anterior: projectProduct.estado,
+                estado_nuevo: "ENTREGADO",
+                usuario_id: userId,
+              },
+              { transaction }
+            );
+          }
+        }
+
+        // Actualizar total de la salida si se creó
+        if (inventoryOut) {
+          await inventoryOut.update({ total }, { transaction });
+        }
+      }
     } else if (estado === "CANCELADO") {
       // Liberar todas las reservas existentes
       for (const producto of project.products) {
@@ -783,80 +789,63 @@ export const updateProjectStatus = async (req, res) => {
       { transaction }
     );
 
-    await transaction.commit();
-    /* console.log("Transacción completada exitosamente"); */
+    // Obtener datos actualizados mientras aún estamos en la transacción
+    const projectUpdated = await ProjectModel.findByPk(id, {
+      include: [
+        {
+          model: ProductModel,
+          as: "products",
+          through: {
+            attributes: [
+              "cantidad_requerida",
+              "cantidad_entregada",
+              "cantidad_reservada",
+              "estado",
+              "fecha_requerida",
+            ],
+          },
+        },
+        {
+          model: ClientModel,
+          as: "client",
+        },
+      ],
+      transaction,
+    });
 
-    try {
-      /* console.log("Obteniendo proyecto actualizado..."); */
-      // Obtener el proyecto actualizado con toda su información
-      const projectUpdated = await ProjectModel.findByPk(id, {
+    // Obtener datos de salida si se generó
+    let inventoryOutData = null;
+    if (estado === "COMPLETADO" && inventoryOut) {
+      inventoryOutData = await InventoryOutModel.findByPk(inventoryOut.id, {
         include: [
           {
             model: ProductModel,
-            as: "products",
+            as: "productos",
             through: {
-              attributes: [
-                "cantidad_requerida",
-                "cantidad_entregada",
-                "cantidad_reservada",
-                "estado",
-                "fecha_requerida",
-              ],
+              attributes: ["cantidad", "subtotal"],
             },
-          },
-          {
-            model: Client,
-            as: "client",
           },
         ],
-      });
-
-      /*console.log("Proyecto actualizado obtenido correctamente");
-      console.log("Obteniendo datos de salida..."); */
-
-      // Si se completó el proyecto y generó una salida, obtenemos sus datos
-      let inventoryOutData = null;
-
-      if (estado === "COMPLETADO" && inventoryOut) {
-        inventoryOutData = await InventoryOutModel.findByPk(inventoryOut.id, {
-          include: [
-            {
-              model: ProductModel,
-              as: "productos",
-              through: {
-                attributes: ["cantidad", "subtotal"],
-              },
-            },
-          ],
-        });
-        /* console.log("Datos de salida obtenidos correctamente"); */
-      }
-
-      /* console.log("Preparando respuesta..."); */
-      const respuesta = {
-        message: `Proyecto ${estado.toLowerCase()} exitosamente`,
-        project: projectUpdated,
-        inventoryOut: inventoryOutData,
-      };
-      /* console.log("Respuesta preparada correctamente"); */
-
-      /* console.log("Enviando respuesta al cliente..."); */
-
-      return res.json({ respuesta });
-    } catch (secondaryError) {
-      console.error("Error después del commit:", secondaryError);
-      return res.json({
-        message: `Proyecto ${estado.toLowerCase()} exitosamente`,
-        projectId: id,
-        estado: estado,
+        transaction,
       });
     }
+
+    const respuesta = {
+      message: `Proyecto ${estado.toLowerCase()} exitosamente`,
+      project: projectUpdated,
+      inventoryOut: inventoryOutData,
+    };
+
+    // Completar la transacción
+    await transaction.commit();
+
+    return res.json({ respuesta });
+    
   } catch (error) {
-    // error en la transacción principal
+    // Rollback en caso de error
     if (transaction && !transaction.finished) {
       await transaction.rollback();
     }
-    /* console.error("Error en updateProjectStatus:", error); */
     return res.status(500).json({
       message: error.message || "Error al actualizar el estado del proyecto",
     });
@@ -892,7 +881,7 @@ export const getProjectsWithDeadlines = async (req, res) => {
           },
         },
         {
-          model: Client,
+          model: ClientModel,
           as: "client",
         },
       ],

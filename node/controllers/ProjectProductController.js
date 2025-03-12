@@ -58,6 +58,7 @@ export const updateProjectProduct = async (req, res) => {
     });
 
     if (!projectProduct) {
+      await transaction.rollback();
       return res
         .status(404)
         .json({ message: "Producto de proyecto no encontrado" });
@@ -279,13 +280,13 @@ export const reserveProjectProduct = async (req, res) => {
         .json({ message: "La cantidad a reservar debe ser mayor a 0" });
     }
 
-    const projectProduct = await ProjectProduct.findOne({
+    const projectProduct = await ProjectProduct.findByPk(id,{
       where: { id },
       include: [
         {
           model: ProductModel,
           as: "productItem",
-          required: true, // Esto asegura un INNER JOIN en lugar de LEFT JOIN
+          required: true, //asegura un INNER JOIN en lugar de LEFT JOIN
           attributes: ["id", "descripcion", "cantidad", "cantidad_reservada"],
         },
       ],
@@ -300,7 +301,7 @@ export const reserveProjectProduct = async (req, res) => {
 
     // Verificar si el producto está incluido correctamente
     if (!projectProduct.productItem) {
-      throw new Error("Producto no encontrado en la relación");
+      throw new Error("Stock insuficiente para realizar la reserva");
     }
 
     const product = projectProduct.productItem;
@@ -397,6 +398,7 @@ export const deliverProjectProduct = async (req, res) => {
 
     // Validación para no permitir entregas de 0
     if (!cantidad || cantidad <= 0) {
+      await transaction.rollback();
       return res
         .status(400)
         .json({ message: "La cantidad a entregar debe ser mayor a 0" });
@@ -408,6 +410,7 @@ export const deliverProjectProduct = async (req, res) => {
         {
           model: ProductModel,
           as: "productItem",
+          required: true,
         },
         {
           model: ProjectModel,
@@ -419,13 +422,27 @@ export const deliverProjectProduct = async (req, res) => {
     });
 
     if (!projectProduct) {
-      throw new Error("Producto de proyecto no encontrado");
+      await transaction.rollback();
+      return res
+        .status(404)
+        .json({ message: "Producto de proyecto no encontrado" });
+    }
+
+    // Verificar que el productItem existe
+    if (!projectProduct.productItem) {
+      await transaction.rollback(); // Agregamos rollback aquí
+      return res
+        .status(500)
+        .json({ message: "Producto no encontrado en la relación" });
     }
 
     const cantidadPendiente =
       projectProduct.cantidad_requerida - projectProduct.cantidad_entregada;
     if (cantidad > cantidadPendiente) {
-      throw new Error("La cantidad excede lo pendiente por entregar");
+      await transaction.rollback();
+      return res
+        .status(500)
+        .json({ message: "La cantidad excede lo pendiente por entregar" });
     }
 
     const fecha = new Date();
@@ -454,15 +471,34 @@ export const deliverProjectProduct = async (req, res) => {
     const precio = parseFloat(projectProduct.productItem?.precio || 0);
     const subtotal = precio * cantidad;
 
-    const inventoryOut = await InventoryOutModel.create(
-      {
-        codigo,
-        user_id: req.userId || req.user?.id,
-        obs: `Salida por proyecto: ${projectProduct.Project.nombre || ''} (ID: ${projectProduct.projectitem?.id || ''})`,
-        total: subtotal,
-      },
-      { transaction }
-    );
+    const userId = req.userId || req.user?.id;
+    if (!userId) {
+      await transaction.rollback();
+      return res.status(401).json({
+        message:
+          "Usuario no autenticado. Se requiere autenticación para realizar entregas.",
+      });
+    }
+
+    let inventoryOut;
+
+    try {
+      inventoryOut = await InventoryOutModel.create(
+        {
+          codigo,
+          user_id: req.userId || req.user?.id,
+          obs: `Salida por proyecto: ${
+            projectProduct.projectItem?.nombre || ""
+          } (ID: ${projectProduct.projectItem?.id || ""})`,
+          total: subtotal,
+        },
+        { transaction }
+      );
+      console.log("Salida creada correctamente con ID:", inventoryOut.id);
+    } catch (createError) {
+      console.error("ERROR AL CREAR SALIDA:", createError);
+      throw createError;
+    }
 
     await InventoryOutProduct.create(
       {
@@ -479,6 +515,7 @@ export const deliverProjectProduct = async (req, res) => {
       transaction,
     });
 
+    // Actualizar reservas si existían
     if (projectProduct.cantidad_reservada > 0) {
       const cantidadADesreservar = Math.min(
         cantidad,
@@ -494,6 +531,7 @@ export const deliverProjectProduct = async (req, res) => {
       });
     }
 
+    // Actualizar proyecto
     await projectProduct.increment("cantidad_entregada", {
       by: cantidad,
       transaction,
@@ -513,6 +551,7 @@ export const deliverProjectProduct = async (req, res) => {
       { transaction }
     );
 
+    // Registrar en historial
     await ProjectProductHistory.create(
       {
         project_product_id: projectProduct.id,
@@ -528,7 +567,7 @@ export const deliverProjectProduct = async (req, res) => {
 
     await transaction.commit();
 
-    // Obtener los datos actualizados incluyendo el precio del producto
+    // Obtener los datos actualizados
     const updatedProjectProduct = await ProjectProduct.findByPk(id, {
       include: [
         {
@@ -545,7 +584,7 @@ export const deliverProjectProduct = async (req, res) => {
       ],
     });
 
-    // Incluir el precio en la respuesta
+    // Obtener detalles de la salida
     const inventoryOutData = await InventoryOutModel.findByPk(inventoryOut.id, {
       include: [
         {
@@ -558,11 +597,13 @@ export const deliverProjectProduct = async (req, res) => {
       ],
     });
 
-    res.json({
-      message: "Entrega realizada correctamente",
-      projectProduct: updatedProjectProduct,
-      precio: precio,
-      inventoryOut: inventoryOutData,
+    return res.json({
+      respuesta: {
+        message: "Entrega realizada correctamente",
+        projectProduct: updatedProjectProduct,
+        precio: precio,
+        inventoryOut: inventoryOutData,
+      },
     });
   } catch (error) {
     await transaction.rollback();

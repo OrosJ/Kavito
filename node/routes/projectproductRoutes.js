@@ -22,8 +22,8 @@ router.put('/:id', updateProjectProduct);
 router.post('/:id/deliver', deliverProducts);
 router.get('/:id/history', getHistory);
 router.post('/:id/reserve', reserveProjectProduct);
-router.post('/:id/reserve', reserveAdditional);
-router.post('/:id/deliver', deliverProjectProduct);
+router.post('/:id/reserve-a', reserveAdditional);
+router.post('/:id/deliver-p', deliverProjectProduct);
 router.put('/:id/release', releaseReservation);
 
 
