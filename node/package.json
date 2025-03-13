@@ -6,7 +6,10 @@
   "scripts": {
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles",
     "test:unit": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles --testPathPattern=__tests__/unit",
-    "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles --testPathPattern=__tests__/integration"
+    "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles --testPathPattern=__tests__/integration",
+    "test:auth": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles \"__tests__/unit/auth\" \"__tests__/unit/usuarios\"",
+    "test:client-cat": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles \"__tests__/unit/clientes\" \"__tests__/unit/categorias\""
+
   },
   "keywords": [],
   "author": "",

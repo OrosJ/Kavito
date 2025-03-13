@@ -34,7 +34,7 @@ const checkControllerFile = () => {
     for (const char of file) {
       if (char in counts) counts[char]++;
     }
-    /* console.log("- Llaves y paréntesis:", counts); */
+    console.log("- Llaves y paréntesis:", counts); 
 
     return true;
   } catch (error) {
