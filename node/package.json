@@ -8,7 +8,16 @@
     "test:unit": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles --testPathPattern=__tests__/unit",
     "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles --testPathPattern=__tests__/integration",
     "test:auth": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles \"__tests__/unit/auth\" \"__tests__/unit/usuarios\"",
-    "test:client-cat": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles \"__tests__/unit/clientes\" \"__tests__/unit/categorias\""
+    "test:client-cat": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles \"__tests__/unit/clientes\" \"__tests__/unit/categorias\"",
+    "test:products": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles \"__tests__/integration/inventario/ProductAPI.test.js\"",
+    "test:invouts": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles \"__tests__/integration/inventario/InvOutAPI.test.js\"",
+    "test:projects": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles \"__tests__/integration/proyectos/ProjectAPI.test.js\"",
+    "test:users": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles \"__tests__/integration/usuarios/UserAPI.test.js\"",
+    "test:clients": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles \"__tests__/integration/clientes/ClientAPI.test.js\"",
+    "test:categories": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles \"__tests__/integration/categorias/CategoryAPI.test.js\"",
+    "test:all-integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles \"__tests__/integration/**/*.test.js\"",
+    "init-test-db": "node ./testDB.js"
+    
 
   },
   "keywords": [],
