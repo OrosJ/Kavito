@@ -17,6 +17,8 @@ import {
 } from "@mui/material";
 import InfoIcon from "@mui/icons-material/Info";
 import Swal from "sweetalert2";
+import { getTodayDate, isDateBefore, isDateAfter, isDateEqual } from '../utils/dateUtils';
+
 
 const CompCreateProject = () => {
   const [formData, setFormData] = useState({
@@ -39,11 +41,9 @@ const CompCreateProject = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const today = new Date();
-    const formattedDate = today.toISOString().split("T")[0];
     setFormData((prev) => ({
       ...prev,
-      fecha_inicio: formattedDate,
+      fecha_inicio: getTodayDate(),
     }));
 
     getProducts();
@@ -89,20 +89,16 @@ const CompCreateProject = () => {
   };
 
   const validateDates = (fecha_inicio, fecha_entrega) => {
-    const start = new Date(fecha_inicio);
-    const end = new Date(fecha_entrega);
-    const today = new Date();
-
-    today.setHours(0, 0, 0, 0);
-    start.setHours(0, 0, 0, 0);
-
-    if (start < today) {
+    const today = getTodayDate();
+    
+    // Verificar que la fecha de inicio no sea anterior a hoy
+    if (isDateBefore(fecha_inicio, today)) {
       throw new Error("La fecha de inicio no puede ser anterior a hoy");
     }
-    if (end <= start) {
-      throw new Error(
-        "La fecha de entrega debe ser posterior a la fecha de inicio"
-      );
+    
+    // Verificar que la fecha de entrega sea posterior a la fecha de inicio
+    if (!isDateAfter(fecha_entrega, fecha_inicio)) {
+      throw new Error("La fecha de entrega debe ser posterior a la fecha de inicio");
     }
   };
 
@@ -342,7 +338,7 @@ const CompCreateProject = () => {
         </div>
 
         <div className="mb-3">
-          <label className="form-label">Dirección</label>
+          <label className="form-label">Dirección de entrega</label>
           <input
             value={formData.direccion}
             onChange={handleChange}
@@ -355,7 +351,7 @@ const CompCreateProject = () => {
         <div className="row">
           <div className="col-md-6">
             <div className="mb-3">
-              <label className="form-label">Costo</label>
+              <label className="form-label">Costo del Proyecto</label>
               <input
                 value={formatCurrency(costoTotal)}
                 type="text"

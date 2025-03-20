@@ -1,14 +1,15 @@
 import ProductModel from "../models/ProductModel.js";
 import CategoryModel from "../models/CategoryModel.js";
+import { recordInventoryChange } from "../controllers/InventoryHistoryController.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 
 // Obtener la ruta del directorio raíz del proyecto
-const rootDir = path.resolve();  // Esto nos da el directorio raíz del proyecto
+const rootDir = path.resolve(); // Esto nos da el directorio raíz del proyecto
 
 // Definir la carpeta de uploads correctamente desde el directorio raíz
-const uploadDir = path.join(rootDir, 'uploads');
+const uploadDir = path.join(rootDir, "uploads");
 
 // Comprobar si el directorio de subida existe, si no, crearlo
 if (!fs.existsSync(uploadDir)) {
@@ -41,23 +42,26 @@ export const getAllProducts = async (req, res) => {
       ],
       attributes: {
         include: [
-          'id',
-          'descripcion',
-          'cantidad',
-          'cantidad_reservada',
-          'precio',
-          'image'
-        ]
-      }
+          "id",
+          "descripcion",
+          "cantidad",
+          "cantidad_reservada",
+          "precio",
+          "image",
+        ],
+      },
     });
 
     // Combinar ambas transformaciones
-    const formattedProducts = products.map(product => {
+    const formattedProducts = products.map((product) => {
       const productJSON = product.toJSON();
       return {
         ...productJSON,
-        cantidad_disponible: product.cantidad - (product.cantidad_reservada || 0),
-        image: product.image ? `http://localhost:8000/uploads/${product.image}` : null
+        cantidad_disponible:
+          product.cantidad - (product.cantidad_reservada || 0),
+        image: product.image
+          ? `http://localhost:8000/uploads/${product.image}`
+          : null,
       };
     });
 
@@ -89,11 +93,15 @@ export const createProduct = async (req, res) => {
 
   let image = null;
   if (req.file) {
-    image = req.file.filename; 
+    image = req.file.filename;
   }
 
   try {
-    
+
+    const userId = req.user?.id || req.userId;
+    console.log("ID de usuario obtenido para historial:", userId);
+    console.log("Datos de req.user:", req.user);
+
     const category = await CategoryModel.findByPk(categoria);
     if (!category) {
       return res.status(400).json({
@@ -108,6 +116,16 @@ export const createProduct = async (req, res) => {
       categoria, //id
       image,
     });
+
+    // Registrar en el historial como ENTRADA
+    await recordInventoryChange(
+      newProduct.id,
+      0,
+      cantidad,
+      "ENTRADA",
+      "Creación inicial del producto",
+      userId
+    );
 
     res.status(201).json({
       message: "Producto creado con éxito",
@@ -132,6 +150,14 @@ export const updateProduct = async (req, res) => {
       }
     }
 
+    // Obtener el producto actual para comparar cambios
+    const product = await ProductModel.findByPk(req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
+
+    const cantidadAnterior = product.cantidad;
+
     // Preparar el objeto de actualización
     const updateData = {
       descripcion,
@@ -146,12 +172,21 @@ export const updateProduct = async (req, res) => {
     }
 
     // Actualizar el producto
-    await ProductModel.update(
-      updateData,
-      {
-        where: { id: req.params.id },
-      }
-    );
+    await ProductModel.update(updateData, {
+      where: { id: req.params.id },
+    });
+
+    // Registrar cambio en el historial si cambió la cantidad
+    if (cantidad !== undefined && cantidad !== cantidadAnterior) {
+      await recordInventoryChange(
+        req.params.id,
+        cantidadAnterior,
+        cantidad,
+        cantidad > cantidadAnterior ? "ENTRADA" : "MODIFICACION",
+        "Actualización manual de cantidad",
+        req.userId || req.user?.id
+      );
+    }
 
     res.json({
       message: "Producto actualizado con éxito",
@@ -163,6 +198,23 @@ export const updateProduct = async (req, res) => {
 
 export const deleteProduct = async (req, res) => {
   try {
+    // Obtener el producto antes de eliminarlo
+    const product = await ProductModel.findByPk(req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
+
+    // Registrar en el historial como ELIMINACION
+    await recordInventoryChange(
+      product.id,
+      product.cantidad,
+      0,
+      "ELIMINACION",
+      "Eliminación del producto",
+      req.userId || req.user?.id
+    );
+
+    // Eliminar el producto
     await ProductModel.destroy({
       where: { id: req.params.id },
     });

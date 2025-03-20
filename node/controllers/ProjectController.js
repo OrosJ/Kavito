@@ -10,6 +10,8 @@ import InventoryOutModel, {
 import ClientModel from "../models/ClientModel.js";
 import { Op } from "sequelize";
 import db from "../database/db.js";
+import { getTodayDate, isDateBefore, isDateAfter } from '../utils/dateUtils.js';
+
 
 // Obtener todos los proyectos
 export const getProjects = async (req, res) => {
@@ -133,18 +135,12 @@ export const createProject = async (req, res) => {
       throw new Error("Faltan campos requeridos");
     }
 
-    // Validar fechas
-    const fechaInicio = new Date(fecha_inicio);
-    const fechaEntrega = new Date(fecha_entrega);
-    const hoy = new Date();
+    const today = getTodayDate();
 
-    hoy.setHours(0, 0, 0, 0);
-    fechaInicio.setHours(0, 0, 0, 0);
-
-    if (fechaInicio < hoy) {
+    if (isDateBefore(fecha_inicio, today)) {
       throw new Error("La fecha de inicio no puede ser anterior a hoy");
     }
-    if (fechaEntrega <= fechaInicio) {
+    if (!isDateAfter(fecha_entrega, fecha_inicio)) {
       throw new Error(
         "La fecha de entrega debe ser posterior a la fecha de inicio"
       );

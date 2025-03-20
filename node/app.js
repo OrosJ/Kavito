@@ -1,3 +1,5 @@
+process.env.TZ = 'America/La_Paz';
+
 import express from "express";
 import path from "path";
 import cors from "cors";
@@ -12,6 +14,7 @@ import projectRoutes from "./routes/projectRoutes.js";
 import statsRoutes from './routes/statsRoutes.js';
 import projectproductRoutes from './routes/projectproductRoutes.js'
 import { setupAssociations } from './models/modelAssociations.js';
+import inventoryHistoryRoutes from "./routes/inventoryHistoryRoutes.js";
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -43,6 +46,7 @@ app.use("/invouts", inventoryOutRoutes);
 app.use("/projects", projectRoutes);
 app.use("/project-products", projectproductRoutes);
 app.use("/stats", statsRoutes);
+app.use("/inventory-history", inventoryHistoryRoutes);
 
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);
@@ -73,3 +77,5 @@ const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}/`);
 });
+
+export default app;

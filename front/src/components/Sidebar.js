@@ -8,6 +8,7 @@ import {
   FaCogs,
   FaTimes,
   FaTasks,
+  FaHistory,
 } from "react-icons/fa"; // FontAwesome
 import "../styles/Sidebar.css";
 import api, { decodeToken } from "../utils/api";
@@ -54,8 +55,8 @@ const Sidebar = ({ isSidebarOpen, onClose }) => {
           </Link>
         </li>
 
-        {shouldShowMenuItem('administrador') && (
-          <li className={isActive('/users') ? 'active' : ''}>
+        {shouldShowMenuItem("administrador") && (
+          <li className={isActive("/users") ? "active" : ""}>
             <Link to="/users">
               <FaUsers className="me-2" /> Usuarios
             </Link>
@@ -80,6 +81,11 @@ const Sidebar = ({ isSidebarOpen, onClose }) => {
         <li className={isActive("/invouts") ? "active" : ""}>
           <Link to="/invouts">
             <FaTasks /> Salidas
+          </Link>
+        </li>
+        <li className={isActive("/inventory/history") ? "active" : ""}>
+          <Link to="/inventory/history">
+            <FaHistory /> Historial de Inventario
           </Link>
         </li>
       </ul>

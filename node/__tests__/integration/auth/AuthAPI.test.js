@@ -1,14 +1,20 @@
 import request from 'supertest';
-import app from '../../../app.js';
+import * as AppModule from '../../../app.js';
 import db from '../../../database/db.js';
 import UserModel from '../../../models/UserModel.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
+// Obtener el objeto app para superset
+const app = AppModule.default || AppModule;
+
+// Crear servidor y asociarlo a supertest
+const server = request(app);
+
 describe('API de Autenticación', () => {
   let testUserId;
   const testUserData = {
-    username: `testauth_${Date.now()}`, // Nombre único para evitar conflictos
+    username: `testauth_${Date.now()}`, 
     email: `testauth_${Date.now()}@example.com`,
     password: 'Test@123',
     role: 'vendedor'
@@ -52,7 +58,7 @@ describe('API de Autenticación', () => {
   
   describe('POST /auth/login', () => {
     test('debe iniciar sesión correctamente con credenciales válidas', async () => {
-      const response = await request(app)
+      const response = await server
         .post('/auth/login')
         .send({
           username: testUserData.username,
@@ -72,7 +78,7 @@ describe('API de Autenticación', () => {
     });
     
     test('debe rechazar el inicio de sesión con contraseña incorrecta', async () => {
-      const response = await request(app)
+      const response = await server
         .post('/auth/login')
         .send({
           username: testUserData.username,
@@ -84,7 +90,7 @@ describe('API de Autenticación', () => {
     });
     
     test('debe rechazar el inicio de sesión con usuario inexistente', async () => {
-      const response = await request(app)
+      const response = await server
         .post('/auth/login')
         .send({
           username: 'usuarioInexistente',
@@ -99,14 +105,14 @@ describe('API de Autenticación', () => {
   describe('Verificación de token', () => {
     test('las rutas protegidas deben rechazar peticiones sin token', async () => {
       // Probar una ruta que sabemos que requiere autenticación
-      const response = await request(app).get('/projects');
+      const response = await server.get('/projects');
       
       expect(response.status).toBe(401);
     });
     
     test('las rutas protegidas deben aceptar peticiones con token válido', async () => {
       // Primero obtenemos un token válido
-      const loginResponse = await request(app)
+      const loginResponse = await server
         .post('/auth/login')
         .send({
           username: testUserData.username,
@@ -116,7 +122,7 @@ describe('API de Autenticación', () => {
       const token = loginResponse.body.token;
       
       // Luego probamos la ruta protegida
-      const response = await request(app)
+      const response = await server
         .get('/projects')
         .set('Authorization', `Bearer ${token}`);
       
@@ -127,7 +133,7 @@ describe('API de Autenticación', () => {
       // Usar un token claramente inválido
       const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
       
-      const response = await request(app)
+      const response = await server
         .get('/projects')
         .set('Authorization', `Bearer ${invalidToken}`);
       

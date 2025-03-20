@@ -23,6 +23,7 @@ import InvOutDetails from "./invout/InvOutDetails.js";
 import CompShowProjects from "./project/ShowProjects";
 import CompCreateProject from "./project/CreateProject";
 import CompProjectDetails from "./project/ProjectDetails.js";
+import InventoryHistoryComponent from "./inventory/InventoryHistoryComponent";
 
 import Login from "./auth/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -279,6 +280,15 @@ function App() {
               <ProtectedRoute
                 isAuthenticated={isAuthenticated}
                 element={<CompProjectDetails />}
+              />
+            }
+          />
+          <Route
+            path="/inventory/history"
+            element={
+              <ProtectedRoute
+                isAuthenticated={isAuthenticated}
+                element={<InventoryHistoryComponent />}
               />
             }
           />
