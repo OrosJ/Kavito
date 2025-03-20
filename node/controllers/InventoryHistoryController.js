@@ -66,10 +66,15 @@ export const getInventoryHistory = async (req, res) => {
 
       // Si se requiere alguna transformación adicional para evitar duplicados
 
+      // Formatear la URL de la imagen si existe
+      if (plainItem.producto && plainItem.producto.image) {
+        plainItem.producto.image = `http://localhost:8000/uploads/${plainItem.producto.image}`;
+      }
+
       return plainItem;
     });
 
-    res.json(history);
+    res.json(formattedHistory);
   } catch (error) {
     console.error("Error en getInventoryHistory:", error);
     res.status(500).json({

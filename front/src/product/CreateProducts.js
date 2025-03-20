@@ -1,4 +1,4 @@
-import axios from 'axios';
+import api from "../utils/api";
 import { useNavigate } from 'react-router-dom';
 import ProductForm from './ProductForm';
 import Swal from "sweetalert2";
@@ -25,13 +25,16 @@ const CreateProduct = () => {
   
   const handleSubmit = async (formData) => {
     try {
-      await axios.post(URI, formData, {
+      const config = {
         headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      mostrarMensaje('success', 'Exito', 'Producto creado correctamente');
+      };
+      
+      await api.post('/products', formData, config);
+      mostrarMensaje('success', 'Éxito', 'Producto creado correctamente');
       navigate('/products');
     } catch (error) {
       console.error("Error al crear el producto:", error);
+      mostrarMensaje('error', 'Error', 'No se pudo crear el producto');
     }
   };
 

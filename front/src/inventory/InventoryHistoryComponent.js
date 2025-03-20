@@ -312,6 +312,11 @@ const InventoryHistoryComponent = () => {
                   width="30"
                   height="30"
                   style={{ objectFit: "cover", borderRadius: "4px" }}
+                  onError={(e) => {
+                    // Fallback en caso de error al cargar la imagen
+                    e.target.onerror = null;
+                    e.target.src = "/placeholder.png";
+                  }}
                 />
               )}
               <Typography variant="body2">{producto.descripcion}</Typography>
