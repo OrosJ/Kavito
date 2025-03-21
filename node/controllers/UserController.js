@@ -1,6 +1,9 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/UserModel.js";
+import InventoryOutModel from "../models/InvOutModel.js";
+import InventoryHistoryModel from "../models/InventoryHistoryModel.js";
+import { ProjectProductHistory } from "../models/ProjectProductModel.js";
 
 // Middleware para verificar el token
 export const verifyToken = (req, res, next) => {
@@ -84,7 +87,10 @@ export const loginUser = async (req, res) => {
 // Obtener todos los usuarios
 export const getUsers = async (req, res) => {
   try {
-    const users = await User.findAll();
+    const where = req.query.includeInactive === "true" ? {} : { activo: true };
+    const users = await User.findAll({
+      where
+    });
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ message: "Error al obtener los usuarios", error });
@@ -142,9 +148,8 @@ export const updateUser = async (req, res) => {
 };
 
 export const deleteUser = async (req, res) => {
-  const { id } = req.params;
-
   try {
+    const { id } = req.params;
     // Buscar al usuario por ID
     const user = await User.findByPk(id);
 
@@ -152,11 +157,118 @@ export const deleteUser = async (req, res) => {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
 
+    // Verificar si hay salidas de inventario asociadas
+    const inventoryOutsCount = await InventoryOutModel.count({
+      where: { user_id: id },
+    });
+
+    if (inventoryOutsCount > 0) {
+      return res.status(400).json({
+        message: `No se puede eliminar este usuario porque tiene ${inventoryOutsCount} registros de salidas de inventario`,
+        hasRelatedItems: true,
+      });
+    }
+
+    // Verificar si hay historial de inventario asociado
+    const inventoryHistoryCount = await InventoryHistoryModel.count({
+      where: { user_id: id },
+    });
+
+    if (inventoryHistoryCount > 0) {
+      return res.status(400).json({
+        message: `No se puede eliminar este usuario porque tiene ${inventoryHistoryCount} registros en el historial de inventario`,
+        hasRelatedItems: true,
+      });
+    }
+
+    // Verificar si hay historial de proyecto asociado
+    const projectHistoryCount = await ProjectProductHistory.count({
+      where: { usuario_id: id },
+    });
+
+    if (projectHistoryCount > 0) {
+      return res.status(400).json({
+        message: `No se puede eliminar este usuario porque tiene ${projectHistoryCount} registros en el historial de proyectos`,
+        hasRelatedItems: true,
+      });
+    }
+
     // Eliminar el usuario
-    await user.destroy();
+    user.activo = false;
+    await user.save();
 
     res.status(200).json({ message: "Usuario eliminado con éxito" });
   } catch (error) {
+    console.error("Error al desactivar usuario:", error);
     res.status(500).json({ message: "Error al eliminar el usuario", error });
+  }
+};
+
+export const deactivateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Buscar al usuario por ID
+    const user = await User.findByPk(id);
+
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    // No permitir desactivar el último administrador
+    if (user.role === "administrador") {
+      const adminCount = await User.count({
+        where: {
+          role: "administrador",
+          activo: true,
+          id: {
+            [Op.ne]: id, // No contar el usuario actual
+          },
+        },
+      });
+
+      if (adminCount === 0) {
+        return res.status(400).json({
+          message:
+            "No se puede desactivar este usuario porque es el último administrador activo",
+          hasRelatedItems: true,
+        });
+      }
+    }
+
+    // Desactivar el usuario
+    user.activo = false;
+    await user.save();
+
+    res.status(200).json({
+      message: "Usuario desactivado correctamente",
+      info: "Este usuario ya no podrá iniciar sesión, pero sus registros históricos se mantienen",
+    });
+  } catch (error) {
+    console.error("Error al desactivar usuario:", error);
+    res
+      .status(500)
+      .json({
+        message: "Error al desactivar el usuario",
+        error: error.message,
+      });
+  }
+};
+
+export const reactivateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+    
+    user.activo = true;
+    await user.save();
+    
+    res.status(200).json({ message: "Usuario reactivado correctamente" });
+  } catch (error) {
+    res.status(500).json({ message: "Error al reactivar el usuario", error });
   }
 };

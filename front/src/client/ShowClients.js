@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
-import { Link } from 'react-router-dom';
-import { MaterialReactTable } from 'material-react-table';
-import { Button, IconButton, Tooltip, Box } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
+import React, { useState, useEffect, useMemo } from "react";
+import axios from "axios";
+import { Link } from "react-router-dom";
+import { MaterialReactTable } from "material-react-table";
+import { Button, IconButton, Tooltip, Box } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 import Swal from "sweetalert2";
 
-const URI = 'http://localhost:8000/clients/';
+const URI = "http://localhost:8000/clients/";
 
 const mostrarMensaje = (tipo, titulo, texto) => {
   Swal.fire({
@@ -31,75 +31,107 @@ const CompShowClients = () => {
 
   const getClients = async () => {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem("authToken");
       if (!token) {
-        console.log('No se encontró el token. Redirigiendo al login...');
+        console.log("No se encontró el token. Redirigiendo al login...");
         // Aquí podrías redirigir al usuario a la página de login si no hay token
         return;
       }
 
       const res = await axios.get(URI, {
         headers: {
-          Authorization: `Bearer ${token}`,  // Incluye el token en los headers
+          Authorization: `Bearer ${token}`, // Incluye el token en los headers
         },
       });
 
       setClients(res.data);
     } catch (error) {
-      console.error('Error al obtener los usuarios:', error);
+      console.error("Error al obtener los usuarios:", error);
     }
   };
 
   const deleteClient = async (id) => {
     const result = await Swal.fire({
-      title: '¿Estás seguro?',
+      title: "¿Estás seguro?",
       text: "¡Este cliente será eliminado permanentemente!",
-      icon: 'warning',
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: '¡Sí, eliminar!',
-      cancelButtonText: 'Cancelar'
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "¡Sí, eliminar!",
+      cancelButtonText: "Cancelar",
     });
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`${URI}${id}`);
-        getClients();
-        mostrarMensaje('success', '¡Eliminado!', 'El cliente ha sido eliminado correctamente.');
+        const response = await axios.delete(`${URI}${id}`);
+
+        if (response.data.hasRelatedItems) {
+          // Si tiene elementos relacionados, mostrar un mensaje de error
+          mostrarMensaje(
+            "error",
+            "No se puede eliminar",
+            response.data.message ||
+              "Este cliente tiene proyectos asociados y no puede ser eliminado."
+          );
+        } else {
+          // Si se eliminó (desactivó) correctamente, actualizar la lista
+          getClients();
+          mostrarMensaje(
+            "success",
+            "¡Eliminado!",
+            "El cliente ha sido eliminado correctamente."
+          );
+        }
       } catch (error) {
-        console.error('Error al eliminar el cliente:', error);
-        mostrarMensaje('error', '¡Error!', 'No se pudo eliminar el cliente.');
+        console.error("Error al eliminar el cliente:", error);
+        if (
+          error.response &&
+          error.response.data &&
+          error.response.data.hasRelatedItems
+        ) {
+          mostrarMensaje(
+            "error",
+            "No se puede eliminar",
+            error.response.data.message ||
+              "Este cliente tiene proyectos asociados y no puede ser eliminado."
+          );
+        } else {
+          mostrarMensaje("error", "¡Error!", "No se pudo eliminar el cliente.");
+        }
       }
     }
   };
 
-  const columns = useMemo(() => [
-    {
-      accessorKey: 'id',
-      header: '#',
-      size: 50,
-    },
-    {
-      accessorKey: 'clientname',
-      header: 'Nombre',
-    },
-    {
-      accessorKey: 'createdAt',
-      header: 'Fecha de Registro',
-    },
-    {
-      accessorKey: 'updatedAt',
-      header: 'Ultima Modificaion',
-    },
-  ], []);
+  const columns = useMemo(
+    () => [
+      {
+        accessorKey: "id",
+        header: "#",
+        size: 50,
+      },
+      {
+        accessorKey: "clientname",
+        header: "Nombre",
+      },
+      {
+        accessorKey: "createdAt",
+        header: "Fecha de Registro",
+      },
+      {
+        accessorKey: "updatedAt",
+        header: "Ultima Modificaion",
+      },
+    ],
+    []
+  );
 
   return (
     <div className="container">
       <h2>Clientes</h2>
       <div className="row">
         <div className="col">
-          <Link to="/create-client" style={{ textDecoration: 'none' }}>
+          <Link to="/create-client" style={{ textDecoration: "none" }}>
             <Button
               variant="contained"
               color="primary"
@@ -116,10 +148,14 @@ const CompShowClients = () => {
               data={clients}
               enableRowActions
               renderRowActions={({ row }) => (
-                <Box sx={{ display: 'flex', gap: '0.5rem' }}>
+                <Box sx={{ display: "flex", gap: "0.5rem" }}>
                   <Tooltip title="Editar">
                     {/* Envolver el IconButton con el Link */}
-                    <IconButton color="primary" component={Link} to={`/edit-client/${row.original.id}`}>
+                    <IconButton
+                      color="primary"
+                      component={Link}
+                      to={`/edit-client/${row.original.id}`}
+                    >
                       <EditIcon />
                     </IconButton>
                   </Tooltip>

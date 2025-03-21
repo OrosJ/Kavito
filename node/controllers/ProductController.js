@@ -4,7 +4,8 @@ import { recordInventoryChange } from "../controllers/InventoryHistoryController
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-
+import { ProjectProduct } from "../models/ProjectProductModel.js";
+import { InventoryOutProduct } from "../models/InvOutModel.js";
 // Obtener la ruta del directorio raíz del proyecto
 const rootDir = path.resolve(); // Esto nos da el directorio raíz del proyecto
 
@@ -34,6 +35,7 @@ export const getAllProducts = async (req, res) => {
   try {
     // Incluyendo la categoría en la consulta
     const products = await ProductModel.findAll({
+      where: { activo: true },
       include: [
         {
           model: CategoryModel,
@@ -97,7 +99,6 @@ export const createProduct = async (req, res) => {
   }
 
   try {
-
     const userId = req.user?.id || req.userId;
     console.log("ID de usuario obtenido para historial:", userId);
     console.log("Datos de req.user:", req.user);
@@ -198,30 +199,69 @@ export const updateProduct = async (req, res) => {
 
 export const deleteProduct = async (req, res) => {
   try {
+    const { id } = req.params;
     // Obtener el producto antes de eliminarlo
-    const product = await ProductModel.findByPk(req.params.id);
+    const product = await ProductModel.findByPk(id);
     if (!product) {
       return res.status(404).json({ message: "Producto no encontrado" });
     }
 
-    // Registrar en el historial como ELIMINACION
-    await recordInventoryChange(
+    // Verificar si tiene reservas
+    if (product.cantidad_reservada > 0) {
+      return res.status(400).json({
+        message:
+          "No se puede eliminar este producto porque tiene reservas activas",
+        hasRelatedItems: true,
+      });
+    }
+
+    // Verificar si está asociado a algún proyecto
+    const projectProductCount = await ProjectProduct.count({
+      where: { productId: id },
+    });
+
+    if (projectProductCount > 0) {
+      return res.status(400).json({
+        message:
+          "No se puede eliminar este producto porque está asociado a uno o más proyectos",
+        hasRelatedItems: true,
+      });
+    }
+
+    // Verificar si hay salidas asociadas
+    const outProductCount = await InventoryOutProduct.count({
+      where: { product_id: id },
+    });
+
+    if (outProductCount > 0) {
+      return res.status(400).json({
+        message:
+          "No se puede eliminar este producto porque tiene salidas de inventario registradas",
+        hasRelatedItems: true,
+      });
+    }
+
+    const userId = req.user ? req.user.id : (req.userId || null);
+
+    // Registrar en el historial
+    const registroExitoso = await recordInventoryChange(
       product.id,
       product.cantidad,
       0,
-      "ELIMINACION",
-      "Eliminación del producto",
-      req.userId || req.user?.id
+      "DESACTIVACION",
+      "Desactivacion del producto",
+      userId
     );
 
-    // Eliminar el producto
-    await ProductModel.destroy({
-      where: { id: req.params.id },
-    });
+    // "Eliminar" el producto
+    product.activo = false;
+    await product.save();
+
     res.json({
-      message: "Producto Eliminado",
+      message: "Producto Desactivado",
     });
   } catch (error) {
+    console.error("Error al desactivar producto:", error);
     res.json({ message: error.message });
   }
 };

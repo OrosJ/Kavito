@@ -267,6 +267,20 @@ const CompProjectDetails = () => {
     try {
       if (!selectedProduct || !actionQuantity) return;
 
+      // Verificar que no exceda la cantidad máxima a reservar
+      const cantidadMaxima =
+        selectedProduct.project_products.cantidad_requerida -
+        selectedProduct.project_products.cantidad_reservada;
+
+      if (parseInt(actionQuantity) > cantidadMaxima) {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: `No puedes reservar más de ${cantidadMaxima} unidades para este producto.`,
+        });
+        return;
+      }
+
       const response = await axios.post(
         `http://localhost:8000/project-products/${selectedProduct.project_products.id}/reserve`,
         { cantidad: parseInt(actionQuantity) },
@@ -985,6 +999,18 @@ const CompProjectDetails = () => {
                   selectedProduct.project_products.cantidad_reservada
                 : 0}
             </Typography>
+            <Typography variant="body2" color="textSecondary" gutterBottom>
+              <strong>Cantidad requerida total:</strong>{" "}
+              {selectedProduct
+                ? selectedProduct.project_products.cantidad_requerida
+                : 0}
+            </Typography>
+            <Typography variant="body2" color="textSecondary" gutterBottom>
+              <strong>Ya reservado:</strong>{" "}
+              {selectedProduct
+                ? selectedProduct.project_products.cantidad_reservada
+                : 0}
+            </Typography>
             <TextField
               type="number"
               label="Cantidad a Reservar"
@@ -999,6 +1025,20 @@ const CompProjectDetails = () => {
                     selectedProduct.project_products.cantidad_reservada
                   : 1,
               }}
+              error={
+                selectedProduct &&
+                parseInt(actionQuantity) >
+                  selectedProduct.project_products.cantidad_requerida -
+                    selectedProduct.project_products.cantidad_reservada
+              }
+              helperText={
+                selectedProduct &&
+                parseInt(actionQuantity) >
+                  selectedProduct.project_products.cantidad_requerida -
+                    selectedProduct.project_products.cantidad_reservada
+                  ? "La cantidad excede el máximo permitido"
+                  : ""
+              }
             />
           </Box>
         </DialogContent>

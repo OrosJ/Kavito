@@ -5,7 +5,7 @@ import UserModel from "./UserModel.js";
 
 const InventoryHistoryModel = db.define("inventory_history", {
   tipo: {
-    type: DataTypes.ENUM('ENTRADA', 'MODIFICACION', 'ELIMINACION'),
+    type: DataTypes.ENUM('ENTRADA', 'MODIFICACION', 'ELIMINACION', 'DESACTIVACION'),
     allowNull: false
   },
   cantidad_anterior: {

@@ -21,6 +21,11 @@ const User = db.define('users', {
     allowNull: false,
     defaultValue: 'vendedor',
   },
+  activo: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    allowNull: false
+  }
 });
 
 export default User;

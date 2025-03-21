@@ -40,25 +40,50 @@ const CompShowCategories = () => {
   };
 
   const deleteCategory = async (id) => {
-    const result = await Swal.fire({
-      title: "¿Estás seguro?",
-      text: "¡Este categoria será eliminada permanentemente!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "¡Sí, eliminar!",
-      cancelButtonText: "Cancelar",
-    });
+    try {
+      const result = await Swal.fire({
+        title: "¿Estás seguro?",
+        text: "¡Este categoria será eliminada permanentemente!",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#3085d6",
+        confirmButtonText: "¡Sí, eliminar!",
+        cancelButtonText: "Cancelar",
+      });
 
-    if(result.isConfirmed){
-      try {
-        await axios.delete(`${URI}${id}`);
-        getCategories(); 
-        mostrarMensaje('success', '¡Eliminado!', 'Categoria eliminada correctamente.');
-      } catch (error) {
-        console.error('Error al eliminar el cliente:', error);
-        mostrarMensaje('error', '¡Error!', 'No se pudo eliminar.');
+      if (result.isConfirmed) {
+        const response = await axios.delete(`${URI}${id}`);
+        if (response.data.hasRelatedItems) {
+          mostrarMensaje(
+            "error",
+            "No se puede eliminar",
+            "Esta categoría tiene productos asociados. Debes reasignar o eliminar estos productos antes de poder eliminar la categoría."
+          );
+        } else {
+          getCategories();
+          mostrarMensaje(
+            "success",
+            "¡Eliminado!",
+            "Categoria eliminada correctamente."
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error al eliminar la categoría:", error);
+      if (
+        error.response &&
+        error.response.data &&
+        error.response.data.message &&
+        error.response.data.message.includes("productos asociados")
+      ) {
+        mostrarMensaje(
+          "error",
+          "No se puede eliminar",
+          "Esta categoría tiene productos asociados. Debes reasignar o eliminar estos productos antes de poder eliminar la categoría."
+        );
+      } else {
+        mostrarMensaje("error", "¡Error!", "No se pudo eliminar la categoría.");
       }
     }
   };

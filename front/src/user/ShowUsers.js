@@ -2,11 +2,12 @@ import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { MaterialReactTable } from "material-react-table";
-import { Button, IconButton, Tooltip, Box } from "@mui/material";
+import { Button, IconButton, Tooltip, Box, FormControlLabel, Switch } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import BlockIcon from "@mui/icons-material/Block";
 import Swal from "sweetalert2";
-import api from "../utils/api"; 
+import api from "../utils/api";
 
 const mostrarMensaje = (tipo, titulo, texto) => {
   Swal.fire({
@@ -27,26 +28,33 @@ const CompShowUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showInactive, setShowInactive] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     getUsers();
-  }, []);
+  }, [showInactive]);
 
   const getUsers = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/users");
+      const res = await api.get(`/users${showInactive ? '?includeInactive=true' : ''}`);
       setUsers(res.data);
       setError(null);
     } catch (error) {
       console.error("Error al obtener los usuarios:", error);
       if (error.response && error.response.status === 403) {
         // Si es un error de permisos
-        mostrarMensaje('error', 'Acceso denegado', 'No tienes permisos para acceder a esta sección');
-        navigate('/');
+        mostrarMensaje(
+          "error",
+          "Acceso denegado",
+          "No tienes permisos para acceder a esta sección"
+        );
+        navigate("/");
       } else {
-        setError("No se pudieron cargar los usuarios. Verifica tus permisos o la conexión.");
+        setError(
+          "No se pudieron cargar los usuarios. Verifica tus permisos o la conexión."
+        );
       }
     } finally {
       setLoading(false);
@@ -67,12 +75,83 @@ const CompShowUsers = () => {
 
     if (result.isConfirmed) {
       try {
+        const response = await api.delete(`${URI}${id}`);
+        if (response.data.hasRelatedItems) {
+          // Si tiene elementos relacionados, mostrar un mensaje de error
+          mostrarMensaje(
+            "error",
+            "No se puede eliminar",
+            response.data.message ||
+              "Este usuario tiene registros asociados y no puede ser eliminado."
+          );
+        } else {
+          getUsers();
+          mostrarMensaje(
+            "success",
+            "¡Eliminado!",
+            "El usuario ha sido eliminado correctamente."
+          );
+        }
         await api.delete(`${URI}${id}`);
         getUsers();
-        mostrarMensaje('success', '¡Eliminado!', 'El usuario ha sido eliminado correctamente.');
+        mostrarMensaje(
+          "success",
+          "¡Eliminado!",
+          "El usuario ha sido eliminado correctamente."
+        );
       } catch (error) {
         console.error("Error al eliminar el usuario:", error);
-        mostrarMensaje('error', '¡Error!', 'No se pudo eliminar el usuario.');
+        if (
+          error.response &&
+          error.response.data &&
+          error.response.data.hasRelatedItems
+        ) {
+          mostrarMensaje(
+            "error",
+            "No se puede eliminar",
+            error.response.data.message ||
+              "Este usuario tiene registros asociados y no puede ser eliminado."
+          );
+        } else {
+          mostrarMensaje("error", "¡Error!", "No se pudo eliminar el usuario.");
+        }
+      }
+    }
+  };
+
+  const deactivateUser = async (id) => {
+    const result = await Swal.fire({
+      title: "¿Desactivar usuario?",
+      text: "Este usuario no podrá iniciar sesión, pero sus registros históricos se mantendrán",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ff9800",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Sí, desactivar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const response = await api.put(`${URI}${id}/deactivate`);
+        getUsers();
+        mostrarMensaje(
+          "success",
+          "Usuario desactivado",
+          "El usuario ha sido desactivado correctamente"
+        );
+      } catch (error) {
+        console.error("Error al desactivar el usuario:", error);
+
+        if (
+          error.response &&
+          error.response.data &&
+          error.response.data.message
+        ) {
+          mostrarMensaje("error", "Error", error.response.data.message);
+        } else {
+          mostrarMensaje("error", "Error", "No se pudo desactivar el usuario");
+        }
       }
     }
   };
@@ -126,6 +205,18 @@ const CompShowUsers = () => {
             </Button>
           </Link>
 
+          <Box sx={{ mb: 2, display: "flex", gap: 2 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={showInactive}
+                  onChange={(e) => setShowInactive(e.target.checked)}
+                />
+              }
+              label="Mostrar usuarios desactivados"
+            />
+          </Box>
+
           {users.length > 0 ? (
             <MaterialReactTable
               columns={columns}
@@ -150,6 +241,14 @@ const CompShowUsers = () => {
                       onClick={() => deleteUser(row.original.id)}
                     >
                       <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Desactivar usuario">
+                    <IconButton
+                      color="warning"
+                      onClick={() => deactivateUser(row.original.id)}
+                    >
+                      <BlockIcon />
                     </IconButton>
                   </Tooltip>
                 </Box>

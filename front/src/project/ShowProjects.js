@@ -183,7 +183,7 @@ const CompShowProjects = () => {
       doc.setDrawColor(255, 255, 255);
       doc.setLineWidth(0.5);
       doc.rect(15, 5, 40, 40, "S");
-      doc.addImage('images/logo.png', 'PNG', 15, 5, 40, 40);
+      doc.addImage("images/logo.png", "PNG", 15, 5, 40, 40);
 
       // Información de la empresa en blanco
       doc.setFontSize(22);
@@ -191,13 +191,17 @@ const CompShowProjects = () => {
       doc.text("FERRETERÍA KAVITO", 60, 25);
 
       doc.setFontSize(10);
-      doc.text("Dirección: Calle Boqueron N°1355 entre Colombia y Almirante Grau", 60, 35);
+      doc.text(
+        "Dirección: Calle Boqueron N°1355 entre Colombia y Almirante Grau",
+        60,
+        35
+      );
       doc.text("Teléfono: 76788361", 60, 40);
       doc.text("Email: ", 60, 45);
 
       // Línea decorativa
       doc.setDrawColor(255, 255, 255);
-      doc.setLineWidth(0.5);  
+      doc.setLineWidth(0.5);
       doc.line(15, 60, 195, 60);
     };
 
@@ -412,12 +416,21 @@ const CompShowProjects = () => {
       {
         accessorKey: "fecha_inicio",
         header: "Fecha Inicio",
-        Cell: ({ cell }) => new Date(cell.getValue()).toLocaleDateString(),
+        Cell: ({ cell }) => {
+          const dateValue = cell.getValue();
+          // Añadir T12:00:00 para establecer la hora al mediodía y evitar problemas de zona horaria
+          const date = new Date(`${dateValue.split("T")[0]}T12:00:00`);
+          return date.toLocaleDateString();
+        },
       },
       {
         accessorKey: "fecha_entrega",
         header: "Fecha Entrega",
-        Cell: ({ cell }) => new Date(cell.getValue()).toLocaleDateString(),
+        Cell: ({ cell }) => {
+          const dateValue = cell.getValue();
+          const date = new Date(`${dateValue.split("T")[0]}T12:00:00`);
+          return date.toLocaleDateString();
+        },
       },
       {
         accessorKey: "prioridad",
@@ -458,7 +471,9 @@ const CompShowProjects = () => {
 
   return (
     <div className="container">
-      <h1 style={{ color: "black", fontWeight: 800, fontSize: "2rem" }}>PROYECTOS</h1>
+      <h1 style={{ color: "black", fontWeight: 800, fontSize: "2rem" }}>
+        PROYECTOS
+      </h1>
       <div className="row">
         <div className="col">
           <Link to="/projects/create" className="btn btn-primary mt-2 mb-2">
@@ -477,7 +492,7 @@ const CompShowProjects = () => {
                   onClick={() =>
                     handleExportPDF(table.getFilteredRowModel().rows)
                   }
-                  startIcon={<PictureAsPdfIcon/>}
+                  startIcon={<PictureAsPdfIcon />}
                   variant="contained"
                 >
                   Generar Reporte
@@ -490,7 +505,9 @@ const CompShowProjects = () => {
                   <Tooltip key={action.status} title={action.tooltip}>
                     <IconButton
                       color="primary"
-                      onClick={() => handleStatusChange(row.original.id, action.status)}
+                      onClick={() =>
+                        handleStatusChange(row.original.id, action.status)
+                      }
                     >
                       {action.icon}
                     </IconButton>
@@ -509,7 +526,7 @@ const CompShowProjects = () => {
                   <IconButton
                     color="error"
                     onClick={() => deleteProject(row.original.id)}
-                    disabled={row.original.estado === 'COMPLETADO'}
+                    disabled={row.original.estado === "COMPLETADO"}
                   >
                     <DeleteIcon />
                   </IconButton>
@@ -518,11 +535,13 @@ const CompShowProjects = () => {
             )}
             muiTableBodyRowProps={({ row }) => ({
               sx: {
-                backgroundColor: 
-                  row.original.estado === 'COMPLETADO' ? 'rgba(76, 175, 80, 0.1)' :
-                  row.original.estado === 'CANCELADO' ? 'rgba(244, 67, 54, 0.1)' :
-                  'inherit',
-              }
+                backgroundColor:
+                  row.original.estado === "COMPLETADO"
+                    ? "rgba(76, 175, 80, 0.1)"
+                    : row.original.estado === "CANCELADO"
+                    ? "rgba(244, 67, 54, 0.1)"
+                    : "inherit",
+              },
             })}
             localization={{
               noRecordsToDisplay: "No hay proyectos registrados",

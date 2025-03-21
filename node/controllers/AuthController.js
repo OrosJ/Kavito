@@ -1,6 +1,6 @@
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import User  from '../models/UserModel.js';
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import User from "../models/UserModel.js";
 
 // Controlador para el login
 export const loginUser = async (req, res) => {
@@ -8,32 +8,38 @@ export const loginUser = async (req, res) => {
 
   try {
     // Buscar al usuario por nombre de usuario
-    const user = await User.findOne({ where: { username } });
-    
+    const user = await User.findOne({
+      where: {
+        username,
+        activo: true, // Solo permitir iniciar sesión a usuarios activos
+      },
+    });
+
     if (!user) {
-      return res.status(400).json({ msg: 'Usuario no encontrado' });
+      return res.status(400).json({ msg: "Usuario no encontrado" });
     }
 
     // Verificar la contraseña con bcrypt
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ msg: 'Contraseña incorrecta' });
+      return res.status(400).json({ msg: "Contraseña incorrecta" });
     }
 
     // Generar el token JWT
     const payload = {
       userId: user.id,
       username: user.username,
-      role: user.role
+      role: user.role,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '1h' });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN || "1h",
+    });
 
     // Enviar el token al cliente
     res.json({ token });
-    
   } catch (error) {
     console.error(error);
-    res.status(500).json({ msg: 'Error del servidor' });
+    res.status(500).json({ msg: "Error del servidor" });
   }
 };
