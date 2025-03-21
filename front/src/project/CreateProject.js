@@ -17,8 +17,12 @@ import {
 } from "@mui/material";
 import InfoIcon from "@mui/icons-material/Info";
 import Swal from "sweetalert2";
-import { getTodayDate, isDateBefore, isDateAfter, isDateEqual } from '../utils/dateUtils';
-
+import {
+  getTodayDate,
+  isDateBefore,
+  isDateAfter,
+  isDateEqual,
+} from "../utils/dateUtils";
 
 const CompCreateProject = () => {
   const [formData, setFormData] = useState({
@@ -41,9 +45,16 @@ const CompCreateProject = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Usar Date directamente para asegurarnos de obtener la fecha actual local
+    const hoy = new Date();
+    const año = hoy.getFullYear();
+    const mes = String(hoy.getMonth() + 1).padStart(2, "0");
+    const día = String(hoy.getDate()).padStart(2, "0");
+    const fechaHoy = `${año}-${mes}-${día}`;
+
     setFormData((prev) => ({
       ...prev,
-      fecha_inicio: getTodayDate(),
+      fecha_inicio: fechaHoy,
     }));
 
     getProducts();
@@ -90,15 +101,17 @@ const CompCreateProject = () => {
 
   const validateDates = (fecha_inicio, fecha_entrega) => {
     const today = getTodayDate();
-    
+
     // Verificar que la fecha de inicio no sea anterior a hoy
     if (isDateBefore(fecha_inicio, today)) {
       throw new Error("La fecha de inicio no puede ser anterior a hoy");
     }
-    
+
     // Verificar que la fecha de entrega sea posterior a la fecha de inicio
     if (!isDateAfter(fecha_entrega, fecha_inicio)) {
-      throw new Error("La fecha de entrega debe ser posterior a la fecha de inicio");
+      throw new Error(
+        "La fecha de entrega debe ser posterior a la fecha de inicio"
+      );
     }
   };
 

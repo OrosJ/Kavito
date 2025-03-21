@@ -1,6 +1,7 @@
 import InventoryHistoryModel from "../models/InventoryHistoryModel.js";
 import ProductModel from "../models/ProductModel.js";
 import UserModel from "../models/UserModel.js";
+import db from "../database/db.js";
 import { Op } from "sequelize";
 
 // Obtener historial de inventario (entradas/modificaciones)

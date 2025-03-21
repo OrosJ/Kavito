@@ -10,8 +10,7 @@ import InventoryOutModel, {
 import ClientModel from "../models/ClientModel.js";
 import { Op } from "sequelize";
 import db from "../database/db.js";
-import { getTodayDate, isDateBefore, isDateAfter } from '../utils/dateUtils.js';
-
+import { getTodayDate, isDateBefore, isDateAfter } from "../utils/dateUtils.js";
 
 // Obtener todos los proyectos
 export const getProjects = async (req, res) => {
@@ -135,12 +134,22 @@ export const createProject = async (req, res) => {
       throw new Error("Faltan campos requeridos");
     }
 
-    const today = getTodayDate();
+    // Convertir explícitamente las fechas para evitar problemas de zona horaria
+    const fechaInicioObj = new Date(`${fecha_inicio}T12:00:00`);
+    const fechaEntregaObj = new Date(`${fecha_entrega}T12:00:00`);
 
-    if (isDateBefore(fecha_inicio, today)) {
+    // Obtener la fecha de hoy con el tiempo establecido a mediodía
+    const hoyObj = new Date();
+    hoyObj.setHours(12, 0, 0, 0);
+    const hoyString = getTodayDate();
+
+    // Validar que la fecha de inicio no sea anterior a hoy
+    if (fechaInicioObj < hoyObj) {
       throw new Error("La fecha de inicio no puede ser anterior a hoy");
     }
-    if (!isDateAfter(fecha_entrega, fecha_inicio)) {
+
+    // Validar que la fecha de entrega sea posterior a la fecha de inicio
+    if (fechaEntregaObj <= fechaInicioObj) {
       throw new Error(
         "La fecha de entrega debe ser posterior a la fecha de inicio"
       );
@@ -550,7 +559,7 @@ export const deleteProject = async (req, res) => {
 export const updateProjectStatus = async (req, res) => {
   const transaction = await db.transaction();
   let inventoryOut = null;
-  
+
   try {
     const { id } = req.params;
     const { estado, motivo, notas } = req.body;
@@ -680,7 +689,8 @@ export const updateProjectStatus = async (req, res) => {
         for (const producto of project.products) {
           const projectProduct = producto.project_products;
           const cantidadPendiente =
-            projectProduct.cantidad_requerida - projectProduct.cantidad_entregada;
+            projectProduct.cantidad_requerida -
+            projectProduct.cantidad_entregada;
 
           if (cantidadPendiente > 0) {
             const subtotal = parseFloat(producto.precio) * cantidadPendiente;
@@ -836,7 +846,6 @@ export const updateProjectStatus = async (req, res) => {
     await transaction.commit();
 
     return res.json({ respuesta });
-    
   } catch (error) {
     // Rollback en caso de error
     if (transaction && !transaction.finished) {
@@ -985,4 +994,4 @@ export const assignProductToProject = async (req, res) => {
       message: error.message || "Error al asignar producto al proyecto",
     });
   }
-}; 
+};
