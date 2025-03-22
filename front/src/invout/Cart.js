@@ -29,8 +29,21 @@ const CarritoComponent = () => {
     const obtenerProductos = async () => {
       try {
         const response = await axios.get("http://localhost:8000/products");
-        setProductos(response.data);
-        setProductosFiltrados(response.data);
+        console.log("Productos cargados:", response.data);
+
+        // Asegurarse de que las imágenes tengan la URL completa
+        const productosConImagen = response.data.map((producto) => {
+          if (producto.image) {
+            // Si la imagen ya tiene URL completa, no modificarla
+            if (!producto.image.startsWith("http")) {
+              producto.image = `http://localhost:8000/uploads/${producto.image}`;
+            }
+          }
+          return producto;
+        });
+
+        setProductos(productosConImagen);
+        setProductosFiltrados(productosConImagen);
       } catch (error) {
         console.error("Error al obtener los productos:", error);
       }
@@ -38,16 +51,6 @@ const CarritoComponent = () => {
 
     obtenerProductos();
   }, []);
-
-  const getImageUrl = (image) => {
-    if (!image) {
-      return "/placeholder.png"; // imagen por defecto
-    }
-    // Evitar concatenación doble verificando si ya tiene la URL base
-    return image.startsWith("http")
-      ? image
-      : `http://localhost:8000/uploads/${image}`;
-  };
 
   // Función de búsqueda
   const filtrarProductos = (texto) => {
@@ -217,20 +220,42 @@ const CarritoComponent = () => {
                   className="d-flex align-items-center"
                   style={{ gap: "1rem" }}
                 >
-                  <img
-                    src={getImageUrl(producto.image)}
-                    alt={producto.descripcion}
+                  <div
                     style={{
                       width: "50px",
                       height: "50px",
-                      objectFit: "cover",
+                      backgroundColor: "#e0e0e0",
                       borderRadius: "4px",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      color: "#666",
+                      fontWeight: "bold",
+                      fontSize: "16px",
+                      border: "1px solid #ccc",
+                      overflow: "hidden",
                     }}
-                    onError={(e) => {
-                      e.target.onerror = null; // Previene loop infinito
-                      e.target.src = "/placeholder.png"; // Imagen por defecto si falla la carga
-                    }}
-                  />
+                  >
+                    {producto.image ? (
+                      <img
+                        src={producto.image}
+                        alt={producto.descripcion}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                        onError={(e) => {
+                          console.log("Error cargando imagen:", producto.image);
+                          e.target.style.display = "none";
+                          e.target.parentElement.innerText =
+                            producto.descripcion.substring(0, 2).toUpperCase();
+                        }}
+                      />
+                    ) : (
+                      producto.descripcion.substring(0, 2).toUpperCase()
+                    )}
+                  </div>
                   <div>
                     <strong>{producto.descripcion}</strong> <br />
                     <small>Stock: {producto.cantidad}</small>

@@ -102,7 +102,7 @@ const CompProjectDetails = () => {
       setProjectClient(project?.client_id?.toString() || "");
       setProjectStartDate(project.fecha_inicio || "");
       setProjectEndDate(project.fecha_entrega || "");
-      setProjectBudget(project.presupuesto || 0);
+      setProjectBudget(project.costo || 0);
       setProjectProducts(project.products || []);
     }
   }, [project]);
@@ -1216,7 +1216,7 @@ const CompProjectDetails = () => {
                   <Grid item xs={12} sm={6} md={3}>
                     <Paper sx={{ p: 2 }}>
                       <Typography variant="subtitle2" color="textSecondary">
-                        Presupuesto
+                        Costo Total
                       </Typography>
                       {editMode ? (
                         <TextField
@@ -1227,7 +1227,7 @@ const CompProjectDetails = () => {
                         />
                       ) : (
                         <Typography variant="body1">
-                          Bs. {parseFloat(project.presupuesto).toFixed(2)}
+                          Bs. {parseFloat(project.costo).toFixed(2)}
                         </Typography>
                       )}
                     </Paper>

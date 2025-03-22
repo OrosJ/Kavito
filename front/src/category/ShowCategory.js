@@ -113,6 +113,15 @@ const CompShowCategories = () => {
 
   return (
     <div className="container">
+      <h3
+        style={{
+          color: "#2563eb",
+          fontWeight: 800,
+          fontSize: "2rem",
+        }}
+      >
+        GESTIÓN DE CATEGORIAS
+      </h3>
       <div className="row">
         <div className="col">
           <Link to="/create-category" className="btn btn-primary mt-2 mb-2">

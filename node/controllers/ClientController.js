@@ -4,7 +4,8 @@ import ProjectModel from "../models/ProjectModel.js";
 export const getAllClients = async (req, res) => {
   try {
     const clients = await ClientModel.findAll({
-        where: { activo: true }
+        where: { activo: true },
+        order: [["updatedAt", "DESC"]],
     });
     res.json(clients);
   } catch (error) {

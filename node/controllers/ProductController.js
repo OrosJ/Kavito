@@ -52,6 +52,7 @@ export const getAllProducts = async (req, res) => {
           "image",
         ],
       },
+      order: [["updatedAt", "DESC"]],
     });
 
     // Combinar ambas transformaciones
@@ -99,6 +100,19 @@ export const createProduct = async (req, res) => {
   }
 
   try {
+    // Validar que cantidad y precio sean mayores que cero
+    if (parseInt(cantidad) <= 0) {
+      return res.status(400).json({
+        message: "La cantidad debe ser mayor que cero",
+      });
+    }
+
+    if (parseFloat(precio) <= 0) {
+      return res.status(400).json({
+        message: "El precio debe ser mayor que cero",
+      });
+    }
+
     const userId = req.user?.id || req.userId;
     console.log("ID de usuario obtenido para historial:", userId);
     console.log("Datos de req.user:", req.user);
@@ -141,6 +155,19 @@ export const updateProduct = async (req, res) => {
   const { descripcion, cantidad, precio, categoria } = req.body;
 
   try {
+    // Validar que cantidad y precio sean mayores que cero si se proporcionan
+    if (cantidad !== undefined && parseInt(cantidad) <= 0) {
+      return res.status(400).json({
+        message: "La cantidad debe ser mayor que cero",
+      });
+    }
+
+    if (precio !== undefined && parseFloat(precio) <= 0) {
+      return res.status(400).json({
+        message: "El precio debe ser mayor que cero",
+      });
+    }
+    
     // Verificar que la categoría exista si se pasa una nueva
     if (categoria) {
       const category = await CategoryModel.findByPk(categoria);

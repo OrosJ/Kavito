@@ -86,9 +86,18 @@ const CompCreateClient = () => {
             required
           />
         </div>
-        <button type="submit" className="btn btn-primary">
-          {id ? 'Actualizar Cliente' : 'Crear Cliente'}
-        </button>
+        <div className="d-flex gap-2">
+          <button type="submit" className="btn btn-primary">
+            {id ? 'Actualizar Cliente' : 'Crear Cliente'}
+          </button>
+          <button 
+            type="button" 
+            className="btn btn-secondary" 
+            onClick={() => navigate('/clients')}
+          >
+            Cancelar
+          </button>
+        </div>
       </form>
     </div>
   );

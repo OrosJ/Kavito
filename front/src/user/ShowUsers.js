@@ -229,7 +229,9 @@ const CompShowUsers = () => {
 
   return (
     <div className="container">
-      <h2>Usuarios</h2>
+      <h1 style={{ color: "#2563eb", fontWeight: 800, fontSize: "2rem" }}>
+        ADMINISTRACIÓN DE USUARIOS
+      </h1>
       <div className="row">
         <div className="col">
           <Link to="/create-user" style={{ textDecoration: "none" }}>

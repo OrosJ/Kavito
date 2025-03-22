@@ -471,8 +471,8 @@ const CompShowProjects = () => {
 
   return (
     <div className="container">
-      <h1 style={{ color: "black", fontWeight: 800, fontSize: "2rem" }}>
-        PROYECTOS
+      <h1 style={{ color: "#2563eb", fontWeight: 800, fontSize: "2rem" }}>
+        GESTIÓN DE PROYECTOS
       </h1>
       <div className="row">
         <div className="col">

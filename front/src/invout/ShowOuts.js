@@ -129,14 +129,18 @@ const CompShowInvOuts = () => {
       doc.setDrawColor(255, 255, 255);
       doc.setLineWidth(0.5);
       doc.rect(15, 5, 40, 40, "S");
-      doc.addImage('images/logo.png', 'PNG', 15, 5, 40, 40);
+      doc.addImage("images/logo.png", "PNG", 15, 5, 40, 40);
 
       doc.setFontSize(22);
       doc.setTextColor(255, 255, 255);
       doc.text("FERRETERÍA KAVITO", 60, 25);
 
       doc.setFontSize(10);
-      doc.text("Dirección: Calle Boqueron N°1355 entre Colombia y Almirante Grau", 60, 35);
+      doc.text(
+        "Dirección: Calle Boqueron N°1355 entre Colombia y Almirante Grau",
+        60,
+        35
+      );
       doc.text("Teléfono: 76788361", 60, 40);
       doc.text("Email: ", 60, 45);
 
@@ -276,7 +280,9 @@ const CompShowInvOuts = () => {
 
   return (
     <div className="container">
-      <h1 style={{ color: "black", fontWeight: 800, fontSize: "2rem" }}>SALIDAS</h1>
+      <h1 style={{ color: "#2563eb", fontWeight: 800, fontSize: "2rem" }}>
+        SALIDAS DE INVENTARIO
+      </h1>
       <div className="row">
         <div className="col">
           <Link to="/invouts/cart" className="btn btn-primary mt-2 mb-2">

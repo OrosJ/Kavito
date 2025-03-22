@@ -89,7 +89,8 @@ export const getUsers = async (req, res) => {
   try {
     const where = req.query.includeInactive === "true" ? {} : { activo: true };
     const users = await User.findAll({
-      where
+      where,
+      order: [["updatedAt", "DESC"]],
     });
     res.status(200).json(users);
   } catch (error) {
@@ -124,17 +125,22 @@ export const updateUser = async (req, res) => {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
 
+    // Crear un objeto con los datos a actualizar
+    const updateData = {
+      username,
+      email,
+      role,
+    };
+
     // Verificar si se proporciona una nueva contraseña y, en caso afirmativo, encriptarla
     let hashedPassword = user.password;
     if (password) {
       hashedPassword = await bcrypt.hash(password, 10);
+      updateData.password = hashedPassword;
     }
 
-    // Actualizar el usuario
-    await User.update(
-      { username, email, password: hashedPassword, role },
-      { where: { id } }
-    );
+    // Actualizar el usuario solo con los campos en updateData
+    await User.update(updateData, { where: { id } });
 
     // Obtener el usuario actualizado
     const updatedUser = await User.findByPk(id);
@@ -246,27 +252,25 @@ export const deactivateUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Error al desactivar usuario:", error);
-    res
-      .status(500)
-      .json({
-        message: "Error al desactivar el usuario",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error al desactivar el usuario",
+      error: error.message,
+    });
   }
 };
 
 export const reactivateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const user = await User.findByPk(id);
     if (!user) {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
-    
+
     user.activo = true;
     await user.save();
-    
+
     res.status(200).json({ message: "Usuario reactivado correctamente" });
   } catch (error) {
     res.status(500).json({ message: "Error al reactivar el usuario", error });

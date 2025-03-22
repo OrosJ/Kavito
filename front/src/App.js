@@ -16,6 +16,7 @@ import CompShowClients from "./client/ShowClients.js";
 import CompCreateClient from "./client/CreateClients.js";
 import CompShowCategories from "./category/ShowCategory";
 import CompCreateCategory from "./category/CreateCategory";
+import CompEditCategory from "./category/EditCategory";
 import CompShowInvOuts from "./invout/ShowOuts.js";
 import CarritoComponent from "./invout/Cart.js";
 import ConfirmarSalida from "./invout/Cart.js";
@@ -224,6 +225,15 @@ function App() {
               <ProtectedRoute
                 isAuthenticated={isAuthenticated}
                 element={<CompCreateCategory />}
+              />
+            }
+          />
+          <Route
+            path="/edit-category/:id"
+            element={
+              <ProtectedRoute
+                isAuthenticated={isAuthenticated}
+                element={<CompEditCategory />}
               />
             }
           />

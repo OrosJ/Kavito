@@ -9,6 +9,9 @@ import {
   FaTimes,
   FaTasks,
   FaHistory,
+  FaWarehouse,
+  FaAngleDown,
+  FaAngleUp,
 } from "react-icons/fa"; // FontAwesome
 import "../styles/Sidebar.css";
 import api, { decodeToken } from "../utils/api";
@@ -16,6 +19,7 @@ import api, { decodeToken } from "../utils/api";
 const Sidebar = ({ isSidebarOpen, onClose }) => {
   const location = useLocation();
   const [userRole, setUserRole] = useState("vendedor");
+  const [inventoryExpanded, setInventoryExpanded] = useState(false);
 
   useEffect(() => {
     // Decodificar el token para obtener el rol
@@ -23,16 +27,30 @@ const Sidebar = ({ isSidebarOpen, onClose }) => {
     if (userData && userData.role) {
       setUserRole(userData.role);
     }
-  }, []);
+
+    // Expandir automáticamente el menú de inventario si estamos en una de sus rutas
+    const inventoryPaths = ["/products", "/invouts", "/inventory/history"];
+    if (inventoryPaths.some((path) => location.pathname.startsWith(path))) {
+      setInventoryExpanded(true);
+    }
+  }, [location.pathname]);
 
   const isActive = (path) => {
     return location.pathname === path;
+  };
+
+  const isActiveParent = (paths) => {
+    return paths.some((path) => location.pathname.startsWith(path));
   };
 
   // Función para determinar si se debe mostrar un elemento del menú según el rol
   const shouldShowMenuItem = (requiredRole) => {
     if (!requiredRole) return true; // Si no se requiere un rol específico, mostrar a todos
     return userRole === requiredRole || userRole === "administrador"; // Administrador ve todo
+  };
+
+  const toggleInventoryMenu = () => {
+    setInventoryExpanded(!inventoryExpanded);
   };
 
   return (
@@ -49,10 +67,49 @@ const Sidebar = ({ isSidebarOpen, onClose }) => {
             <FaHome /> Inicio
           </Link>
         </li>
-        <li className={isActive("/products") ? "active" : ""}>
-          <Link to="/products">
-            <FaBox /> Productos
-          </Link>
+
+        {/* Grupo de Inventario */}
+        <li
+          className={`${
+            isActiveParent(["/products", "/invouts", "/inventory/history"])
+              ? "active"
+              : ""
+          } menu-parent`}
+        >
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              toggleInventoryMenu();
+            }}
+          >
+            <FaWarehouse /> Inventario
+            {inventoryExpanded ? (
+              <FaAngleUp className="menu-arrow" />
+            ) : (
+              <FaAngleDown className="menu-arrow" />
+            )}
+          </a>
+
+          {inventoryExpanded && (
+            <ul className="submenu">
+              <li className={isActive("/products") ? "active" : ""}>
+                <Link to="/products">
+                  <FaBox /> Productos
+                </Link>
+              </li>
+              <li className={isActive("/invouts") ? "active" : ""}>
+                <Link to="/invouts">
+                  <FaTasks /> Salidas
+                </Link>
+              </li>
+              <li className={isActive("/inventory/history") ? "active" : ""}>
+                <Link to="/inventory/history">
+                  <FaHistory /> Historial
+                </Link>
+              </li>
+            </ul>
+          )}
         </li>
 
         {shouldShowMenuItem("administrador") && (
@@ -76,16 +133,6 @@ const Sidebar = ({ isSidebarOpen, onClose }) => {
         <li className={isActive("/projects") ? "active" : ""}>
           <Link to="/projects">
             <FaProjectDiagram /> Proyectos
-          </Link>
-        </li>
-        <li className={isActive("/invouts") ? "active" : ""}>
-          <Link to="/invouts">
-            <FaTasks /> Salidas
-          </Link>
-        </li>
-        <li className={isActive("/inventory/history") ? "active" : ""}>
-          <Link to="/inventory/history">
-            <FaHistory /> Historial de Inventario
           </Link>
         </li>
       </ul>

@@ -426,7 +426,7 @@ const CompShowProducts = () => {
 
   return (
     <div className="container">
-      <h1 style={{ color: "black", fontWeight: 800, fontSize: "2rem" }}>
+      <h1 style={{ color: "#2563eb", fontWeight: 800, fontSize: "2rem" }}>
         INVENTARIO DE PRODUCTOS
       </h1>
       {error && (

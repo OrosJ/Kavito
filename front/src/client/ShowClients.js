@@ -128,7 +128,9 @@ const CompShowClients = () => {
 
   return (
     <div className="container">
-      <h2>Clientes</h2>
+      <h1 style={{ color: "#2563eb", fontWeight: 800, fontSize: "2rem" }}>
+        GESTIÓN DE CLIENTES
+      </h1>
       <div className="row">
         <div className="col">
           <Link to="/create-client" style={{ textDecoration: "none" }}>

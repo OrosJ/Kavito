@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import axios from "axios";
 import "../styles/ProductForm.css";
 
@@ -64,6 +65,17 @@ const ProductForm = ({ initialData = {}, onSubmit, isEditing = false }) => {
       (!isEditing && !formData.image) */
     ) {
       setError("Por favor complete todos los campos requeridos.");
+      return;
+    }
+
+    // Validar que cantidad y precio sean mayores que cero
+    if (parseInt(formData.cantidad) <= 0) {
+      setError("La cantidad debe ser mayor que cero.");
+      return;
+    }
+
+    if (parseFloat(formData.precio) <= 0) {
+      setError("El precio debe ser mayor que cero.");
       return;
     }
 
@@ -162,9 +174,27 @@ const ProductForm = ({ initialData = {}, onSubmit, isEditing = false }) => {
             )}
           </div>
 
-          <button type="submit" className="submit-button">
-            {isEditing ? "Actualizar" : "Crear"} Producto
-          </button>
+          <div className="button-group">
+            <button type="submit" className="submit-button">
+              {isEditing ? "Actualizar" : "Crear"} Producto
+            </button>
+            &nbsp;
+            <Link
+              to="/products"
+              className="cancel-button btn btn-secondary"
+              style={{
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0.375rem 0.75rem",
+                borderRadius: "0.25rem",
+                fontSize: "1rem",
+              }}
+            >
+              Cancelar
+            </Link>
+          </div>
         </form>
       </div>
     </div>
