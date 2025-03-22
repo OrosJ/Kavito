@@ -2,10 +2,18 @@ import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { MaterialReactTable } from "material-react-table";
-import { Button, IconButton, Tooltip, Box, FormControlLabel, Switch } from "@mui/material";
+import {
+  Button,
+  IconButton,
+  Tooltip,
+  Box,
+  FormControlLabel,
+  Switch,
+} from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import BlockIcon from "@mui/icons-material/Block";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import Swal from "sweetalert2";
 import api from "../utils/api";
 
@@ -38,7 +46,9 @@ const CompShowUsers = () => {
   const getUsers = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/users${showInactive ? '?includeInactive=true' : ''}`);
+      const res = await api.get(
+        `/users${showInactive ? "?includeInactive=true" : ""}`
+      );
       setUsers(res.data);
       setError(null);
     } catch (error) {
@@ -156,6 +166,34 @@ const CompShowUsers = () => {
     }
   };
 
+  const reactivateUser = async (id) => {
+    const result = await Swal.fire({
+      title: "¿Reactivar usuario?",
+      text: "Este usuario volverá a poder iniciar sesión en el sistema",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#4caf50",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Sí, reactivar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const response = await api.put(`/users/${id}/reactivate`);
+        getUsers();
+        mostrarMensaje(
+          "success",
+          "Usuario reactivado",
+          "El usuario ha sido reactivado correctamente"
+        );
+      } catch (error) {
+        console.error("Error al reactivar el usuario:", error);
+        mostrarMensaje("error", "Error", "No se pudo reactivar el usuario");
+      }
+    }
+  };
+
   const columns = useMemo(
     () => [
       {
@@ -251,6 +289,16 @@ const CompShowUsers = () => {
                       <BlockIcon />
                     </IconButton>
                   </Tooltip>
+                  {!row.original.activo && (
+                    <Tooltip title="Reactivar usuario">
+                      <IconButton
+                        color="success"
+                        onClick={() => reactivateUser(row.original.id)}
+                      >
+                        <RefreshIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                 </Box>
               )}
               positionActionsColumn="last"

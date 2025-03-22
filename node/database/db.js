@@ -41,9 +41,9 @@ const db = new Sequelize(dbName, dbUser, dbPassword, {
   dialect: "mysql",
   logging: false, /* process.env.NODE_ENV === "development" ? console.log : false, */
   pool: {
-    max: 5,
+    max: 10,
     min: 0,
-    acquire: 30000,
+    acquire: 60000,
     idle: 10000,
   },
   define: {

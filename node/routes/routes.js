@@ -10,7 +10,7 @@ router.get('/:id', getProduct)
 router.post('/', authenticateToken, uploadImage, createProduct);
 // Ruta para actualizar un producto (con imagen)
 router.put('/:id',authenticateToken, uploadImage, updateProduct);
-router.delete('/:id', deleteProduct)
+router.delete('/:id', authenticateToken, deleteProduct)
 
 
 export default router

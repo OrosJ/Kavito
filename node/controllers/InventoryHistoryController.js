@@ -131,25 +131,109 @@ export const recordInventoryChange = async (
   cantidadNueva,
   tipo,
   motivo,
-  userId
+  userId,
+  transaction = null
 ) => {
   try {
-    const diferencia = cantidadNueva - cantidadAnterior;
-
-    await InventoryHistoryModel.create({
-      tipo: tipo || "MODIFICACION",
-      product_id: productId,
-      cantidad_anterior: cantidadAnterior,
-      cantidad_nueva: cantidadNueva,
-      diferencia,
-      motivo: motivo || "Modificación de cantidad",
-      user_id: userId,
-      fecha: new Date(),
+    console.log("recordInventoryChange called with params:", {
+      productId,
+      cantidadAnterior,
+      cantidadNueva,
+      tipo,
+      motivo,
+      userId,
+      withTransaction: !!transaction,
     });
 
-    return true;
+    /*     if (!productId) {
+      console.error("no se encontro el id de producto");
+      throw new Error("se requiere Id de producto");
+    } */
+
+    const diferencia = cantidadNueva - cantidadAnterior;
+    console.log(`diferencia calculada: ${diferencia}`);
+
+    // verificar tipo
+    const validTypes = [
+      "ENTRADA",
+      "MODIFICACION",
+      "ELIMINACION",
+      "DESACTIVACION",
+      "SALIDA",
+    ];
+
+    if (!validTypes.includes(tipo)) {
+      console.error(
+        `Valor invaido para tipo: ${tipo}. debe ser uno de: ${validTypes.join(
+          ", "
+        )}`
+      );
+      tipo = "MODIFICACION"; // Default
+    }
+
+    // Crear registro con o sin transaccion
+    const options = transaction ? { transaction } : {};
+
+    // Si no hay transaccion se crea una propia
+    let localTransaction = null;
+    let result = false;
+
+    try {
+      if (!transaction) {
+        // Crear transaccion local
+        localTransaction = await db.transaction({
+          isolationLevel:
+            db.Sequelize.Transaction.ISOLATION_LEVELS.READ_COMMITTED,
+        });
+        options.transaction = localTransaction;
+      }
+
+      // Crear el registro
+      const record = await InventoryHistoryModel.create(
+        {
+          tipo: tipo,
+          product_id: productId,
+          cantidad_anterior: cantidadAnterior,
+          cantidad_nueva: cantidadNueva,
+          diferencia,
+          motivo: motivo || "Modificación de cantidad",
+          user_id: userId || null,
+          fecha: new Date(),
+        },
+        options
+      );
+
+      // commit de la transaccion si se creo
+      if (localTransaction) {
+        await localTransaction.commit();
+      }
+
+      console.log("Successfully created inventory history record:", {
+        id: record.id,
+        tipo: record.tipo,
+        product_id: record.product_id,
+      });
+
+      result = true;
+    } catch (innerError) {
+      // 
+      if (localTransaction) {
+        await localTransaction.rollback();
+      }
+      throw innerError; // 
+    }
+
+    // validar ID
+/*     if (!userId) {
+      console.warn("No hay ID de usuario");
+    } */
+
+    return result;
   } catch (error) {
-    console.error("Error al registrar cambio de inventario:", error);
+    console.error("Error in recordInventoryChange:", error);
+    if (error.name === "SequelizeValidationError") {
+      console.error("Validation errors:", error.errors);
+    }
     return false;
   }
 };
@@ -190,6 +274,21 @@ export const getInventoryStats = async (req, res) => {
       attributes: [
         "fecha",
         [db.fn("SUM", db.col("diferencia")), "total_entradas"],
+      ],
+      group: [db.fn("DATE", db.col("fecha"))],
+      order: [[db.literal("fecha"), "ASC"]],
+    });
+
+    const salidaRecords = await InventoryHistoryModel.findAll({
+      where: {
+        tipo: "SALIDA",
+        fecha: {
+          [Op.between]: [startDate, today],
+        },
+      },
+      attributes: [
+        "fecha",
+        [db.fn("SUM", db.col("diferencia")), "total_salidas_hist"],
       ],
       group: [db.fn("DATE", db.col("fecha"))],
       order: [[db.literal("fecha"), "ASC"]],

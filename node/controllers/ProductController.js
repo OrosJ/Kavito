@@ -200,14 +200,25 @@ export const updateProduct = async (req, res) => {
 export const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`Intentando eliminar con ID: ${id}`);
+
     // Obtener el producto antes de eliminarlo
     const product = await ProductModel.findByPk(id);
     if (!product) {
+      console.log(`Product with ID ${id} not found`);
       return res.status(404).json({ message: "Producto no encontrado" });
     }
 
+    console.log(`producto encontrado: ${product.descripcion}`);
+
     // Verificar si tiene reservas
+    console.log(
+      `Revisando reservas, reservas actuales: ${product.cantidad_reservada}`
+    );
     if (product.cantidad_reservada > 0) {
+      console.log(
+        `Producto con reservas activas: ${product.cantidad_reservada}`
+      );
       return res.status(400).json({
         message:
           "No se puede eliminar este producto porque tiene reservas activas",
@@ -216,11 +227,14 @@ export const deleteProduct = async (req, res) => {
     }
 
     // Verificar si está asociado a algún proyecto
+    console.log("Revisando asociaciones...");
     const projectProductCount = await ProjectProduct.count({
       where: { productId: id },
     });
+    console.log(`asciaciones encontradas con proyecto: ${projectProductCount}`);
 
     if (projectProductCount > 0) {
+      console.log(`Producto asociado con ${projectProductCount} proyectos`);
       return res.status(400).json({
         message:
           "No se puede eliminar este producto porque está asociado a uno o más proyectos",
@@ -229,11 +243,14 @@ export const deleteProduct = async (req, res) => {
     }
 
     // Verificar si hay salidas asociadas
+    console.log("Revisando salidas...");
     const outProductCount = await InventoryOutProduct.count({
       where: { product_id: id },
     });
+    console.log(`salidas encontradas: ${outProductCount}`);
 
     if (outProductCount > 0) {
+      console.log(`Producto tiene ${outProductCount} salidas`);
       return res.status(400).json({
         message:
           "No se puede eliminar este producto porque tiene salidas de inventario registradas",
@@ -241,21 +258,32 @@ export const deleteProduct = async (req, res) => {
       });
     }
 
-    const userId = req.user ? req.user.id : (req.userId || null);
+    // Extraer el ID del usuario de forma más explícita
+    const userId = req.userId || (req.user && req.user.id);
+    console.log("Usuario ID para historial de eliminación:", userId);
 
-    // Registrar en el historial
-    const registroExitoso = await recordInventoryChange(
-      product.id,
-      product.cantidad,
-      0,
-      "DESACTIVACION",
-      "Desactivacion del producto",
-      userId
-    );
+    console.log("About to record inventory change...");
+    try {
+      // Registrar en el historial
+      const result = await recordInventoryChange(
+        product.id,
+        product.cantidad,
+        0,
+        "DESACTIVACION",
+        "Desactivacion del producto",
+        userId
+      );
+      console.log("cambio registrado:", result);
+    } catch (error) {
+      console.error("Error guardando el cambio:", recordError);
+      throw recordError;
+    }
 
     // "Eliminar" el producto
+    console.log("Intentando desactivar el producto...");
     product.activo = false;
     await product.save();
+    console.log("Producto desactivado correctamente");
 
     res.json({
       message: "Producto Desactivado",

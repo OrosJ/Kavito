@@ -30,7 +30,7 @@ const CompShowProducts = () => {
       setError(null);
       const res = await axios.get(URI);
       console.log("Productos recibidos:", res.data);
-      setProducts(res.data || []); 
+      setProducts(res.data || []);
     } catch (error) {
       setError(
         error.response?.data?.message || "Error al cargar los productos"
@@ -60,19 +60,58 @@ const CompShowProducts = () => {
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`${URI}${id}`);
-        // Mostrar mensaje de éxito
+        console.log(`Intentando eliminar producto con ID: ${id}`);
+
+        // token
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+          console.error("No se encontro el token de autenticacion");
+          Swal.fire("Error", "No se encontró token de autenticación", "error");
+          return;
+        }
+
+        // Make the delete request with the auth token in headers
+        const response = await axios.delete(`${URI}${id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        console.log("Delete response:", response);
         Swal.fire(
           "Eliminado",
           "El producto ha sido eliminado correctamente",
           "success"
         );
+
         // Recargar la lista de productos
         getProducts();
       } catch (error) {
+        console.error("Error details:", error);
         // Mostrar mensaje de error
         Swal.fire("Error", "No se pudo eliminar el producto", "error");
         console.error(error);
+        // Check for specific error responses
+        if (error.response) {
+          console.error("Error response:", error.response);
+
+          if (error.response.data && error.response.data.hasRelatedItems) {
+            Swal.fire(
+              "No se puede eliminar",
+              error.response.data.message ||
+                "Este producto tiene elementos relacionados",
+              "error"
+            );
+          } else {
+            Swal.fire(
+              "Error",
+              error.response.data?.message || "No se pudo eliminar el producto",
+              "error"
+            );
+          }
+        } else {
+          Swal.fire("Error", "No se pudo eliminar el producto", "error");
+        }
       }
     }
   };
@@ -85,27 +124,31 @@ const CompShowProducts = () => {
       // Ajusta el tamaño del rectángulo del encabezado (más bajo)
       doc.setFillColor(63, 81, 181); // Color de fondo
       doc.rect(0, 0, doc.internal.pageSize.width, 50, "F"); // Reducido de 65 a 50
-    
+
       // Dibuja un cuadro alrededor del logo
       doc.setDrawColor(255, 255, 255); // Color de borde blanco
       doc.setLineWidth(0.5);
       doc.rect(15, 5, 40, 40, "S"); // Ajusta la posición para un rectángulo más pequeño
-    
+
       // Agrega la imagen del logo (ajusta la ruta y las dimensiones según sea necesario)
       // El método `addImage` requiere la URL de la imagen, tipo de imagen (JPG, PNG), y las coordenadas.
-      doc.addImage('images/logo.png', 'PNG', 15, 5, 40, 40);  // Cambia 'ruta/a/tu/logo.png' por la ruta real
-    
+      doc.addImage("images/logo.png", "PNG", 15, 5, 40, 40); // Cambia 'ruta/a/tu/logo.png' por la ruta real
+
       // Ajustar texto en la parte superior
       doc.setFontSize(22);
       doc.setTextColor(255, 255, 255); // Color de texto blanco
       doc.text("FERRETERÍA KAVITO", 60, 25); // Mover el texto hacia abajo para ajustarlo
-    
+
       // Ajustar otros textos (Dirección, Teléfono, etc.)
       doc.setFontSize(10);
-      doc.text("Dirección: Calle Boqueron N°1355 entre Colombia y Almirante Grau", 60, 35);
+      doc.text(
+        "Dirección: Calle Boqueron N°1355 entre Colombia y Almirante Grau",
+        60,
+        35
+      );
       doc.text("Teléfono: 76788361", 60, 40);
       doc.text("Email: ", 60, 45);
-    
+
       // Línea separadora (ajustada para el nuevo tamaño del encabezado)
       doc.setDrawColor(255, 255, 255);
       doc.setLineWidth(0.5);
@@ -339,6 +382,11 @@ const CompShowProducts = () => {
                   objectFit: "cover",
                   borderRadius: "4px",
                 }}
+                onError={(e) => {
+                // en caso de error
+                e.target.onerror = null;
+                e.target.src = "/placeholder.png";
+              }}
               />
             ) : (
               <Box
@@ -396,10 +444,12 @@ const CompShowProducts = () => {
             columns={columns}
             data={products}
             enableRowActions
-            state={{ isLoading: loading, showProgressBars: loading, }}
+            state={{ isLoading: loading, showProgressBars: loading }}
             renderEmptyRowsFallback={() => (
-              <center style={{ padding: '2rem' }}>
-                {loading ? 'Cargando productos...' : 'No hay productos registrados'}
+              <center style={{ padding: "2rem" }}>
+                {loading
+                  ? "Cargando productos..."
+                  : "No hay productos registrados"}
               </center>
             )}
             renderTopToolbarCustomActions={({ table }) => (

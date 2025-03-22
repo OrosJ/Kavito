@@ -285,6 +285,12 @@ const InventoryHistoryComponent = () => {
             case "ELIMINACION":
               color = "error";
               break;
+            case "DESACTIVACION":
+              color = "error";
+              break;
+            case "SALIDA":
+              color = "error";
+              break;
             default:
               color = "default";
           }
@@ -422,6 +428,8 @@ const InventoryHistoryComponent = () => {
                     <MenuItem value="ENTRADA">Entradas</MenuItem>
                     <MenuItem value="MODIFICACION">Modificaciones</MenuItem>
                     <MenuItem value="ELIMINACION">Eliminaciones</MenuItem>
+                    <MenuItem value="DESACTIVACION">Eliminaciones</MenuItem>
+                    <MenuItem value="SALIDA">Eliminaciones</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>

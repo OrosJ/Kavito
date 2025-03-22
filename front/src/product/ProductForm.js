@@ -60,8 +60,8 @@ const ProductForm = ({ initialData = {}, onSubmit, isEditing = false }) => {
       !formData.descripcion ||
       !formData.cantidad ||
       !formData.precio ||
-      !formData.categoria ||
-      (!isEditing && !formData.image)
+      !formData.categoria /* ||
+      (!isEditing && !formData.image) */
     ) {
       setError("Por favor complete todos los campos requeridos.");
       return;
@@ -149,7 +149,7 @@ const ProductForm = ({ initialData = {}, onSubmit, isEditing = false }) => {
               name="image"
               onChange={handleChange}
               accept="image/*"
-              required={!isEditing}
+              required={false}
             />
 
             {imagePreview && (
