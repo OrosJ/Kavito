@@ -326,13 +326,12 @@ const CompShowInvOuts = () => {
                       <AssignmentIcon />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Eliminar">
-                    <IconButton
-                      color="error"
-                      onClick={() => deleteInvOut(row.original.id)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+                  <Tooltip title="No se permite eliminar las salidas ya confirmadas">
+                    <span>
+                      <IconButton color="error" disabled={true}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </span>
                   </Tooltip>
                 </Box>
               )}

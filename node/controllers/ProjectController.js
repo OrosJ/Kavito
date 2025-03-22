@@ -8,6 +8,7 @@ import InventoryOutModel, {
   InventoryOutProduct,
 } from "../models/InvOutModel.js";
 import ClientModel from "../models/ClientModel.js";
+import { recordInventoryChange } from "../controllers/InventoryHistoryController.js";
 import { Op } from "sequelize";
 import db from "../database/db.js";
 import { getTodayDate, isDateBefore, isDateAfter } from "../utils/dateUtils.js";
@@ -15,7 +16,53 @@ import { getTodayDate, isDateBefore, isDateAfter } from "../utils/dateUtils.js";
 // Obtener todos los proyectos
 export const getProjects = async (req, res) => {
   try {
+    const {
+      estado,
+      mostrarInactivos = "false",
+      sortBy = "fecha_entrega",
+      orderDir = "ASC",
+    } = req.query;
+
+    // Construir la cláusula where
+    const where = {};
+
+    // Filtrar por estado si se proporciona
+    if (estado) {
+      where.estado = estado;
+    }
+
+    // Por defecto, mostrar sólo los activos a menos que se solicite lo contrario
+    if (mostrarInactivos !== "true") {
+      where.activo = true;
+    }
+
+    // Preparar orden basado en estado y fecha de entrega
+    let order = [];
+
+    // Si no se solicita un orden específico, priorizar proyectos activos
+    if (!req.query.sortBy) {
+      // Ordenar primero por estado (activos primero)
+      order.push([
+        db.literal(`
+          CASE 
+            WHEN estado IN ('PLANIFICACION', 'EN_PROGRESO', 'PAUSADO') THEN 1
+            WHEN estado = 'COMPLETADO' THEN 2
+            WHEN estado = 'CANCELADO' THEN 3
+            ELSE 4
+          END
+        `),
+        "ASC",
+      ]);
+
+      // Luego por fecha de entrega
+      order.push(["fecha_entrega", "ASC"]);
+    } else {
+      // Usar el orden solicitado
+      order.push([sortBy, orderDir]);
+    }
+
     const projects = await ProjectModel.findAll({
+      where,
       include: [
         {
           model: ProductModel,
@@ -36,7 +83,7 @@ export const getProjects = async (req, res) => {
           as: "client",
         },
       ],
-      order: [["fecha_entrega", "ASC"]],
+      order,
     });
     res.json(projects);
   } catch (error) {
@@ -501,6 +548,7 @@ export const deleteProject = async (req, res) => {
   const transaction = await db.transaction();
   try {
     const { id } = req.params;
+
     const project = await ProjectModel.findByPk(id, {
       include: [
         {
@@ -513,18 +561,24 @@ export const deleteProject = async (req, res) => {
     });
 
     if (!project) {
+      await transaction.rollback();
       return res.status(404).json({ message: "Proyecto no encontrado" });
     }
 
     // No permitir eliminar proyectos completados
     if (project.estado === "COMPLETADO") {
-      throw new Error("No se pueden eliminar proyectos completados");
+      await transaction.rollback();
+      return res.status(400).json({
+        message: "No se pueden eliminar proyectos completados",
+        error: true,
+      });
     }
 
-    // Liberar productos reservados
+    // Implementación simplificada: solo usar eliminación lógica
+    // Liberar productos reservados si existen
     for (const producto of project.products) {
       const projectProduct = producto.project_products;
-      if (projectProduct.cantidad_reservada > 0) {
+      if (projectProduct && projectProduct.cantidad_reservada > 0) {
         await producto.decrement("cantidad_reservada", {
           by: projectProduct.cantidad_reservada,
           transaction,
@@ -532,26 +586,32 @@ export const deleteProject = async (req, res) => {
       }
     }
 
-    // Eliminar registros relacionados
-    await ProjectProductHistory.destroy({
-      where: {
-        project_product_id: {
-          [Op.in]: project.products.map((p) => p.project_products.id),
-        },
+    // Marcar proyecto como inactivo
+    await project.update(
+      {
+        activo: false,
+        estado: "CANCELADO",
+        motivo_cancelacion: "Eliminado por usuario",
       },
-      transaction,
-    });
-
-    await project.destroy({ transaction });
+      { transaction }
+    );
 
     await transaction.commit();
-    res.json({
-      message: "Proyecto eliminado correctamente",
+
+    return res.json({
+      message: "Proyecto desactivado correctamente",
       projectId: id,
+      eliminacionLogica: true,
     });
   } catch (error) {
-    await transaction.rollback();
-    res.status(500).json({ message: error.message });
+    console.error("Error en deleteProject:", error);
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
+    res.status(500).json({
+      message: "Error al eliminar el proyecto",
+      error: error.message,
+    });
   }
 };
 
@@ -707,6 +767,10 @@ export const updateProjectStatus = async (req, res) => {
               { transaction }
             );
 
+            // Guardar la cantidad anterior para el registro de historial
+            const cantidadAnterior = producto.cantidad;
+            const cantidadNueva = cantidadAnterior - cantidadPendiente;
+
             // Actualizar stock y reservas
             await producto.decrement("cantidad", {
               by: cantidadPendiente,
@@ -730,7 +794,7 @@ export const updateProjectStatus = async (req, res) => {
               { transaction }
             );
 
-            // Registrar en historial
+            // Registrar en historial de proyecto
             await ProjectProductHistory.create(
               {
                 project_product_id: projectProduct.id,
@@ -741,6 +805,18 @@ export const updateProjectStatus = async (req, res) => {
                 usuario_id: userId,
               },
               { transaction }
+            );
+
+            // INTEGRACIÓN CON HISTORIAL DE INVENTARIO
+            // Guardar en el historial de inventario
+            await recordInventoryChange(
+              producto.id,
+              cantidadAnterior,
+              cantidadNueva,
+              "SALIDA",
+              `Salida automática por finalización de proyecto: ${project.nombre} (ID: ${project.id})`,
+              userId,
+              transaction
             );
           }
         }

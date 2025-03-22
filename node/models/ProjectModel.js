@@ -41,7 +41,12 @@ const ProjectModel = db.define("projects", {
   },
   fecha_completado: DataTypes.DATE,
   motivo_cancelacion: DataTypes.STRING,
-  notas_cierre: DataTypes.TEXT
+  notas_cierre: DataTypes.TEXT,
+  activo: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    allowNull: false
+  }
 });
 
 export default ProjectModel;

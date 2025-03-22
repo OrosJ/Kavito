@@ -310,7 +310,7 @@ export const getInventoryOutById = async (req, res) => {
   }
 };
 
-export const deleteInventoryOut = async (req, res) => {
+/* export const deleteInventoryOut = async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -339,4 +339,4 @@ export const deleteInventoryOut = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-};
+}; */

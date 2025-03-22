@@ -7,6 +7,7 @@ import ProjectModel from "../models/ProjectModel.js";
 import InventoryOutModel, {
   InventoryOutProduct,
 } from "../models/InvOutModel.js";
+import { recordInventoryChange } from "../controllers/InventoryHistoryController.js";
 import { Op } from "sequelize";
 import db from "../database/db.js";
 
@@ -280,7 +281,7 @@ export const reserveProjectProduct = async (req, res) => {
         .json({ message: "La cantidad a reservar debe ser mayor a 0" });
     }
 
-    const projectProduct = await ProjectProduct.findByPk(id,{
+    const projectProduct = await ProjectProduct.findByPk(id, {
       where: { id },
       include: [
         {
@@ -441,8 +442,17 @@ export const deliverProjectProduct = async (req, res) => {
     if (cantidad > cantidadPendiente) {
       await transaction.rollback();
       return res
-        .status(500)
+        .status(400)
         .json({ message: "La cantidad excede lo pendiente por entregar" });
+    }
+
+    const userId = req.userId || req.user?.id;
+    if (!userId) {
+      await transaction.rollback();
+      return res.status(401).json({
+        message:
+          "Usuario no autenticado. Se requiere autenticación para realizar entregas.",
+      });
     }
 
     const fecha = new Date();
@@ -470,15 +480,6 @@ export const deliverProjectProduct = async (req, res) => {
 
     const precio = parseFloat(projectProduct.productItem?.precio || 0);
     const subtotal = precio * cantidad;
-
-    const userId = req.userId || req.user?.id;
-    if (!userId) {
-      await transaction.rollback();
-      return res.status(401).json({
-        message:
-          "Usuario no autenticado. Se requiere autenticación para realizar entregas.",
-      });
-    }
 
     let inventoryOut;
 
@@ -510,6 +511,11 @@ export const deliverProjectProduct = async (req, res) => {
       { transaction }
     );
 
+    // Guardar la cantidad anterior para el historial
+    const cantidadAnterior = projectProduct.productItem.cantidad;
+    const cantidadNueva = cantidadAnterior - cantidad;
+
+    // Actualizar stock del producto
     await projectProduct.productItem.decrement("cantidad", {
       by: cantidad,
       transaction,
@@ -551,7 +557,7 @@ export const deliverProjectProduct = async (req, res) => {
       { transaction }
     );
 
-    // Registrar en historial
+    // Registrar en historial de proyecto
     await ProjectProductHistory.create(
       {
         project_product_id: projectProduct.id,
@@ -563,6 +569,19 @@ export const deliverProjectProduct = async (req, res) => {
         usuario_id: req.userId,
       },
       { transaction }
+    );
+
+    // Guardar en el historial de inventario
+    await recordInventoryChange(
+      projectProduct.productId,
+      cantidadAnterior,
+      cantidadNueva,
+      "SALIDA",
+      `Salida para proyecto: ${projectProduct.projectItem?.nombre || ""} (ID: ${
+        projectProduct.projectItem?.id || ""
+      })`,
+      userId,
+      transaction
     );
 
     await transaction.commit();

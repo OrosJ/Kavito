@@ -14,6 +14,17 @@ import {
   Typography,
   Chip,
   Stack,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Grid,
+  Divider,
+  Paper,
+  ToggleButtonGroup,
+  ToggleButton,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
@@ -23,6 +34,8 @@ import PauseIcon from "@mui/icons-material/Pause";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import FilterAltIcon from "@mui/icons-material/FilterAlt";
+import RestoreIcon from "@mui/icons-material/Restore";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import Swal from "sweetalert2";
@@ -35,15 +48,48 @@ const CompShowProjects = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
 
+  // Estado para filtros
+  const [filters, setFilters] = useState({
+    estado: "",
+    mostrarInactivos: false,
+    sortBy: "fecha_entrega",
+    orderDir: "ASC",
+  });
+
+  // Estado para diálogo de filtros
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+
   useEffect(() => {
     getProjects();
-  }, []);
+  }, [filters]);
 
   const getProjects = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("authToken");
-      const res = await axios.get(URI, {
+
+      // Construir URL con filtros
+      let url = URI;
+      const queryParams = [];
+
+      if (filters.estado) {
+        queryParams.push(`estado=${filters.estado}`);
+      }
+
+      if (filters.mostrarInactivos) {
+        queryParams.push("mostrarInactivos=true");
+      }
+
+      if (filters.sortBy) {
+        queryParams.push(`sortBy=${filters.sortBy}`);
+        queryParams.push(`orderDir=${filters.orderDir}`);
+      }
+
+      if (queryParams.length > 0) {
+        url += `?${queryParams.join("&")}`;
+      }
+
+      const res = await axios.get(url, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -105,12 +151,27 @@ const CompShowProjects = () => {
     if (result.isConfirmed) {
       try {
         const token = localStorage.getItem("authToken");
-        await axios.delete(`${URI}${id}`, {
+        const response = await axios.delete(`${URI}${id}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-        Swal.fire("Eliminado", "El proyecto ha sido eliminado", "success");
+
+        // Mostrar mensaje según tipo de eliminación
+        if (response.data.eliminacionLogica) {
+          Swal.fire(
+            "Desactivado",
+            "El proyecto ha sido desactivado debido a que tiene historial de movimientos",
+            "info"
+          );
+        } else {
+          Swal.fire(
+            "Eliminado",
+            "El proyecto ha sido eliminado permanentemente",
+            "success"
+          );
+        }
+
         getProjects();
       } catch (error) {
         console.error("Error al eliminar:", error);
@@ -119,7 +180,10 @@ const CompShowProjects = () => {
     }
   };
 
-  const getStatusActions = (currentStatus) => {
+  const getStatusActions = (currentStatus, isActive) => {
+    // Si el proyecto no está activo, no mostrar acciones de estado
+    if (!isActive) return [];
+
     const actions = [];
     switch (currentStatus) {
       case "PLANIFICACION":
@@ -167,6 +231,16 @@ const CompShowProjects = () => {
         break;
     }
     return actions;
+  };
+
+  const handleResetFilters = () => {
+    setFilters({
+      estado: "",
+      mostrarInactivos: false,
+      sortBy: "fecha_entrega",
+      orderDir: "ASC",
+    });
+    setFilterDialogOpen(false);
   };
 
   const handleExportPDF = (filteredRows) => {
@@ -357,6 +431,69 @@ const CompShowProjects = () => {
     doc.save("reporte-proyectos.pdf");
   };
 
+  const getStatusColor = (status) => {
+    const colors = {
+      PLANIFICACION: "info",
+      EN_PROGRESO: "primary",
+      PAUSADO: "warning",
+      COMPLETADO: "success",
+      CANCELADO: "danger",
+    };
+    return colors[status] || "default";
+  };
+
+  const getPriorityColor = (priority) => {
+    const colors = {
+      BAJA: "success",
+      MEDIA: "warning",
+      ALTA: "danger",
+    };
+    return colors[priority] || "secondary";
+  };
+
+  // Componente de filtro rápido para estado
+  const StatusFilter = () => (
+    <ToggleButtonGroup
+      value={filters.estado}
+      exclusive
+      onChange={(e, newValue) =>
+        setFilters({ ...filters, estado: newValue || "" })
+      }
+      aria-label="filtro de estado"
+      size="small"
+      sx={{
+        mb: 2,
+        "& .MuiToggleButton-root": {
+          backgroundColor: "white", // Fondo sólido para los botones
+          "&.Mui-selected": {
+            backgroundColor: "primary.main", // Fondo sólido al seleccionar
+            color: "white",
+            fontWeight: "bold",
+          },
+        },
+      }}
+    >
+      <ToggleButton value="" aria-label="todos">
+        Todos
+      </ToggleButton>
+      <ToggleButton value="PLANIFICACION" aria-label="planificación">
+        Planificación
+      </ToggleButton>
+      <ToggleButton value="EN_PROGRESO" aria-label="en progreso">
+        En Progreso
+      </ToggleButton>
+      <ToggleButton value="PAUSADO" aria-label="pausados">
+        Pausados
+      </ToggleButton>
+      <ToggleButton value="COMPLETADO" aria-label="completados">
+        Completados
+      </ToggleButton>
+      <ToggleButton value="CANCELADO" aria-label="cancelados">
+        Cancelados
+      </ToggleButton>
+    </ToggleButtonGroup>
+  );
+
   const columns = useMemo(
     () => [
       {
@@ -445,35 +582,52 @@ const CompShowProjects = () => {
           />
         ),
       },
+      {
+        accessorKey: "activo",
+        header: "Estado",
+        size: 100,
+        Cell: ({ cell }) => (
+          <Chip
+            label={cell.getValue() ? "Activo" : "Inactivo"}
+            color={cell.getValue() ? "success" : "error"}
+            size="small"
+            variant="outlined"
+          />
+        ),
+      },
     ],
     []
   );
-
-  const getStatusColor = (status) => {
-    const colors = {
-      PLANIFICACION: "info",
-      EN_PROGRESO: "primary",
-      PAUSADO: "warning",
-      COMPLETADO: "success",
-      CANCELADO: "danger",
-    };
-    return colors[status] || "default";
-  };
-
-  const getPriorityColor = (priority) => {
-    const colors = {
-      BAJA: "success",
-      MEDIA: "warning",
-      ALTA: "danger",
-    };
-    return colors[priority] || "secondary";
-  };
 
   return (
     <div className="container">
       <h1 style={{ color: "#2563eb", fontWeight: 800, fontSize: "2rem" }}>
         GESTIÓN DE PROYECTOS
       </h1>
+
+      {/* Filtros rápidos */}
+      <Box sx={{ mb: 2 }}>
+        <StatusFilter />
+
+        <Button
+          variant="outlined"
+          startIcon={<FilterAltIcon />}
+          onClick={() => setFilterDialogOpen(true)}
+          sx={{ ml: 2, backgroundColor: "white" }}
+        >
+          Filtros avanzados
+        </Button>
+
+        {(filters.estado ||
+          filters.mostrarInactivos ||
+          filters.sortBy !== "fecha_entrega" ||
+          filters.orderDir !== "ASC") && (
+          <Button variant="text" onClick={handleResetFilters} sx={{ ml: 1,  backgroundColor: "white" }}>
+            Limpiar filtros
+          </Button>
+        )}
+      </Box>
+
       <div className="row">
         <div className="col">
           <Link to="/projects/create" className="btn btn-primary mt-2 mb-2">
@@ -501,46 +655,71 @@ const CompShowProjects = () => {
             )}
             renderRowActions={({ row }) => (
               <Box sx={{ display: "flex", gap: "0.5rem" }}>
-                {getStatusActions(row.original.estado).map((action) => (
-                  <Tooltip key={action.status} title={action.tooltip}>
-                    <IconButton
-                      color="primary"
-                      onClick={() =>
-                        handleStatusChange(row.original.id, action.status)
-                      }
-                    >
-                      {action.icon}
-                    </IconButton>
-                  </Tooltip>
-                ))}
-                <Tooltip title="Ver Detalles">
-                  <IconButton
-                    color="info"
-                    component={Link}
-                    to={`/projects/details/${row.original.id}`}
-                  >
-                    <AssignmentIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Eliminar">
-                  <IconButton
-                    color="error"
-                    onClick={() => deleteProject(row.original.id)}
-                    disabled={row.original.estado === "COMPLETADO"}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Tooltip>
+                {row.original.activo ? (
+                  <>
+                    {getStatusActions(row.original.estado).map((action) => (
+                      <Tooltip key={action.status} title={action.tooltip}>
+                        <IconButton
+                          color="primary"
+                          onClick={() =>
+                            handleStatusChange(row.original.id, action.status)
+                          }
+                        >
+                          {action.icon}
+                        </IconButton>
+                      </Tooltip>
+                    ))}
+                    <Tooltip title="Ver Detalles">
+                      <IconButton
+                        color="info"
+                        component={Link}
+                        to={`/projects/details/${row.original.id}`}
+                      >
+                        <AssignmentIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Eliminar">
+                      <IconButton
+                        color="error"
+                        onClick={() => deleteProject(row.original.id)}
+                        disabled={row.original.estado === "COMPLETADO"}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </>
+                ) : (
+                  <>
+                    <Tooltip title="Ver Detalles">
+                      <IconButton
+                        color="info"
+                        component={Link}
+                        to={`/projects/details/${row.original.id}`}
+                      >
+                        <AssignmentIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Restaurar">
+                      <IconButton
+                        color="success"
+                        onClick={() => restoreProject(row.original.id)}
+                      >
+                        <RestoreIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </>
+                )}
               </Box>
             )}
             muiTableBodyRowProps={({ row }) => ({
               sx: {
-                backgroundColor:
-                  row.original.estado === "COMPLETADO"
-                    ? "rgba(76, 175, 80, 0.1)"
-                    : row.original.estado === "CANCELADO"
-                    ? "rgba(244, 67, 54, 0.1)"
-                    : "inherit",
+                backgroundColor: !row.original.activo
+                  ? "rgba(244, 67, 54, 0.05)"
+                  : row.original.estado === "COMPLETADO"
+                  ? "rgba(76, 175, 80, 0.1)"
+                  : row.original.estado === "CANCELADO"
+                  ? "rgba(244, 67, 54, 0.1)"
+                  : "inherit",
               },
             })}
             localization={{
@@ -549,6 +728,100 @@ const CompShowProjects = () => {
           />
         </div>
       </div>
+      {/* Diálogo de filtros avanzados */}
+      <Dialog
+        open={filterDialogOpen}
+        onClose={() => setFilterDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Filtros avanzados</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Estado</InputLabel>
+                <Select
+                  value={filters.estado}
+                  onChange={(e) =>
+                    setFilters({ ...filters, estado: e.target.value })
+                  }
+                  label="Estado"
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  <MenuItem value="PLANIFICACION">Planificación</MenuItem>
+                  <MenuItem value="EN_PROGRESO">En Progreso</MenuItem>
+                  <MenuItem value="PAUSADO">Pausados</MenuItem>
+                  <MenuItem value="COMPLETADO">Completados</MenuItem>
+                  <MenuItem value="CANCELADO">Cancelados</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Ordenar por</InputLabel>
+                <Select
+                  value={filters.sortBy}
+                  onChange={(e) =>
+                    setFilters({ ...filters, sortBy: e.target.value })
+                  }
+                  label="Ordenar por"
+                >
+                  <MenuItem value="fecha_entrega">Fecha de entrega</MenuItem>
+                  <MenuItem value="fecha_inicio">Fecha de inicio</MenuItem>
+                  <MenuItem value="nombre">Nombre</MenuItem>
+                  <MenuItem value="prioridad">Prioridad</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Dirección</InputLabel>
+                <Select
+                  value={filters.orderDir}
+                  onChange={(e) =>
+                    setFilters({ ...filters, orderDir: e.target.value })
+                  }
+                  label="Dirección"
+                >
+                  <MenuItem value="ASC">Ascendente</MenuItem>
+                  <MenuItem value="DESC">Descendente</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={filters.mostrarInactivos}
+                      onChange={(e) =>
+                        setFilters({
+                          ...filters,
+                          mostrarInactivos: e.target.checked,
+                        })
+                      }
+                    />
+                  }
+                  label="Mostrar proyectos inactivos"
+                />
+              </FormControl>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleResetFilters}>Restablecer</Button>
+          <Button
+            onClick={() => setFilterDialogOpen(false)}
+            variant="contained"
+          >
+            Aplicar filtros
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };
