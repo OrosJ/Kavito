@@ -128,11 +128,12 @@ const Sidebar = ({ isSidebarOpen, onClose }) => {
             <FaCogs /> Categorias
           </Link>
         </li>
+        {shouldShowMenuItem("administrador") && (
         <li className={isActive("/projects") ? "active" : ""}>
           <Link to="/projects">
             <FaProjectDiagram /> Proyectos
           </Link>
-        </li>
+        </li>)}
       </ul>
     </div>
   );

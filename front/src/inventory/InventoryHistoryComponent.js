@@ -16,7 +16,12 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  ToggleButtonGroup,
+  ToggleButton,
+  Stack,
+  Switch,
   FormControl,
+  FormControlLabel,
   InputLabel,
   Select,
   Chip,
@@ -26,8 +31,10 @@ import {
   Info as InfoIcon,
   PictureAsPdf as PdfIcon,
   FilterAlt as FilterIcon,
+  FilterAlt as FilterAltIcon,
   TrendingUp as TrendingUpIcon,
 } from "@mui/icons-material";
+import RestoreIcon from "@mui/icons-material/Restore";
 import {
   LineChart,
   Line,
@@ -59,6 +66,9 @@ const InventoryHistoryComponent = () => {
     endDate: null,
     tipo: "",
     productId: "",
+    sortBy: "fecha",
+    orderDir: "DESC",
+    showInactiveProducts: false,
   });
 
   // Estado para nuevo registro de entrada
@@ -111,6 +121,17 @@ const InventoryHistoryComponent = () => {
         queryParams.push(`productId=${filters.productId}`);
       }
 
+      // Añadir parámetros de ordenamiento
+      if (filters.sortBy) {
+        queryParams.push(`sortBy=${filters.sortBy}`);
+        queryParams.push(`orderDir=${filters.orderDir}`);
+      }
+
+      // Añadir parámetro para mostrar productos inactivos
+      if (filters.showInactiveProducts) {
+        queryParams.push(`showInactiveProducts=true`);
+      }
+
       if (queryParams.length > 0) {
         url += `?${queryParams.join("&")}`;
       }
@@ -142,7 +163,7 @@ const InventoryHistoryComponent = () => {
     }
   };
 
-  const getStatsData = async () => {
+  const getStatsData = async (period = statsPeriod) => {
     try {
       setLoading(true);
       const config = getAuthHeaders();
@@ -163,6 +184,57 @@ const InventoryHistoryComponent = () => {
     }
   };
 
+  const getHistoryWithFilters = async (tipoFiltro) => {
+    try {
+      setLoading(true);
+      const config = getAuthHeaders();
+
+      // Construir la URL con los filtros
+      let url = URI;
+      const queryParams = [];
+
+      if (filters.startDate && filters.endDate) {
+        queryParams.push(`startDate=${filters.startDate}`);
+        queryParams.push(`endDate=${filters.endDate}`);
+      }
+
+      // Usar el tipoFiltro pasado como parámetro en lugar de filters.tipo
+      if (tipoFiltro) {
+        queryParams.push(`tipo=${tipoFiltro}`);
+      }
+
+      if (filters.productId) {
+        queryParams.push(`productId=${filters.productId}`);
+      }
+
+      // Otros parámetros...
+      if (filters.sortBy) {
+        queryParams.push(`sortBy=${filters.sortBy}`);
+        queryParams.push(`orderDir=${filters.orderDir}`);
+      }
+
+      if (queryParams.length > 0) {
+        url += `?${queryParams.join("&")}`;
+      }
+
+      const response = await axios.get(url, config);
+      setHistory(response.data);
+      setError(null);
+    } catch (error) {
+      console.error("Error al obtener el historial:", error);
+      if (error.response?.status === 403) {
+        localStorage.removeItem("authToken");
+        window.location.href = "/login";
+      } else {
+        setError(
+          error.response?.data?.message || "Error al cargar el historial"
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters({
@@ -174,6 +246,20 @@ const InventoryHistoryComponent = () => {
   const handleFilterSubmit = (e) => {
     e.preventDefault();
     getHistory();
+  };
+
+  const handleResetFilters = () => {
+    setFilters({
+      startDate: null,
+      endDate: null,
+      tipo: "",
+      productId: "",
+      sortBy: "fecha",
+      orderDir: "DESC",
+      showInactiveProducts: false,
+    });
+    // Aplicar los filtros después de resetear
+    getHistoryWithFilters("");
   };
 
   const handleNewEntryChange = (e) => {
@@ -439,79 +525,107 @@ const InventoryHistoryComponent = () => {
           <Typography variant="h6" gutterBottom>
             Filtros
           </Typography>
-          <form onSubmit={handleFilterSubmit}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={2}>
-                <TextField
-                  label="Fecha Inicio"
-                  type="date"
-                  name="startDate"
-                  value={filters.startDate || ""}
-                  onChange={handleFilterChange}
-                  InputLabelProps={{ shrink: true }}
-                  fullWidth
-                />
-              </Grid>
-              <Grid item xs={12} sm={2}>
-                <TextField
-                  label="Fecha Fin"
-                  type="date"
-                  name="endDate"
-                  value={filters.endDate || ""}
-                  onChange={handleFilterChange}
-                  InputLabelProps={{ shrink: true }}
-                  fullWidth
-                />
-              </Grid>
-              <Grid item xs={12} sm={3}>
-                <FormControl fullWidth>
-                  <InputLabel>Tipo</InputLabel>
-                  <Select
-                    name="tipo"
-                    value={filters.tipo}
-                    onChange={handleFilterChange}
-                    label="Tipo"
-                  >
-                    <MenuItem value="">Todos</MenuItem>
-                    <MenuItem value="ENTRADA">Entradas</MenuItem>
-                    <MenuItem value="MODIFICACION">Modificaciones</MenuItem>
-                    <MenuItem value="ELIMINACION">Eliminaciones</MenuItem>
-                    <MenuItem value="DESACTIVACION">Eliminaciones</MenuItem>
-                    <MenuItem value="SALIDA">Eliminaciones</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={3}>
-                <FormControl fullWidth>
-                  <InputLabel>Producto</InputLabel>
-                  <Select
-                    name="productId"
-                    value={filters.productId}
-                    onChange={handleFilterChange}
-                    label="Producto"
-                  >
-                    <MenuItem value="">Todos</MenuItem>
-                    {products.map((product) => (
-                      <MenuItem key={product.id} value={product.id}>
-                        {product.descripcion}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={2}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  type="submit"
-                  startIcon={<FilterIcon />}
-                  fullWidth
-                >
-                  Filtrar
-                </Button>
-              </Grid>
-            </Grid>
-          </form>
+
+          {/* Filtro rápido de tipo */}
+          <ToggleButtonGroup
+            value={filters.tipo}
+            exclusive
+            onChange={(e, newValue) => {
+              setFilters({ ...filters, tipo: newValue || "" });
+              getHistoryWithFilters(newValue || "");
+            }}
+            aria-label="filtro de tipo"
+            size="small"
+            sx={{
+              mb: 2,
+              "& .MuiToggleButton-root": {
+                backgroundColor: "white",
+                "&.Mui-selected": {
+                  backgroundColor: "primary.main",
+                  color: "white",
+                  fontWeight: "bold",
+                },
+              },
+            }}
+          >
+            <ToggleButton value="" aria-label="todos">
+              Todos
+            </ToggleButton>
+            <ToggleButton value="ENTRADA" aria-label="entrada">
+              Entradas
+            </ToggleButton>
+            <ToggleButton value="MODIFICACION" aria-label="modificacion">
+              Modificaciones
+            </ToggleButton>
+            <ToggleButton value="SALIDA" aria-label="salida">
+              Salidas
+            </ToggleButton>
+            <ToggleButton value="ELIMINACION" aria-label="eliminacion">
+              Eliminaciones
+            </ToggleButton>
+          </ToggleButtonGroup>
+
+          {/* Botones de filtro avanzado */}
+          {/*           <Button
+            variant="outlined"
+            startIcon={<FilterAltIcon />}
+            onClick={() => setFilterDialogOpen(true)}
+            sx={{ ml: 2, backgroundColor: "white" }}
+          >
+            Filtros avanzados
+          </Button> */}
+
+          {/* Botón para limpiar filtros */}
+          {(filters.tipo ||
+            filters.productId ||
+            filters.startDate ||
+            filters.endDate ||
+            filters.sortBy !== "fecha" ||
+            filters.orderDir !== "DESC" ||
+            filters.showInactiveProducts) && (
+            <Button
+              variant="text"
+              startIcon={<RestoreIcon />}
+              onClick={handleResetFilters}
+              sx={{ ml: 1, backgroundColor: "white" }}
+            >
+              Limpiar filtros
+            </Button>
+          )}
+
+          {/* Chips para mostrar filtros activos */}
+          <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+            {filters.tipo && (
+              <Chip
+                label={`Tipo: ${filters.tipo}`}
+                onDelete={() => setFilters({ ...filters, tipo: "" })}
+                color="primary"
+                variant="outlined"
+              />
+            )}
+            {filters.productId && (
+              <Chip
+                label={`Producto: ${
+                  products.find(
+                    (p) => p.id.toString() === filters.productId.toString()
+                  )?.descripcion || filters.productId
+                }`}
+                onDelete={() => setFilters({ ...filters, productId: "" })}
+                color="primary"
+                variant="outlined"
+              />
+            )}
+            {filters.startDate && filters.endDate && (
+              <Chip
+                label={`Período: ${filters.startDate} - ${filters.endDate}`}
+                onDelete={() =>
+                  setFilters({ ...filters, startDate: null, endDate: null })
+                }
+                color="primary"
+                variant="outlined"
+              />
+            )}
+          </Stack>
         </CardContent>
       </Card>
 
@@ -610,14 +724,12 @@ const InventoryHistoryComponent = () => {
         // Establecer el orden inicial de columnas
         initialState={{
           columnOrder: [
-            ...columns.map(col => col.id || col.accessorKey || col.header),
-            'mrt-row-actions'
+            ...columns.map((col) => col.id || col.accessorKey || col.header),
+            "mrt-row-actions",
           ],
           density: "compact",
         }}
-
         positionActionsColumn="last"
-
         renderRowActions={({ row }) => (
           <Box
             sx={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}
@@ -664,7 +776,6 @@ const InventoryHistoryComponent = () => {
             </Tooltip>
           </Box>
         )}
-        
         localization={{
           noRecordsToDisplay: "No hay registros de inventario disponibles",
         }}
@@ -745,7 +856,11 @@ const InventoryHistoryComponent = () => {
               <InputLabel>Período</InputLabel>
               <Select
                 value={statsPeriod}
-                onChange={(e) => setStatsPeriod(e.target.value)}
+                onChange={(e) => {
+                  setStatsPeriod(e.target.value);
+                  // Llamar a getStatsData inmediatamente cuando cambia el período
+                  setTimeout(() => getStatsData(e.target.value), 10);
+                }}
                 label="Período"
               >
                 <MenuItem value="week">Última Semana</MenuItem>
@@ -753,9 +868,6 @@ const InventoryHistoryComponent = () => {
                 <MenuItem value="year">Último Año</MenuItem>
               </Select>
             </FormControl>
-            <Button variant="outlined" sx={{ ml: 2 }} onClick={getStatsData}>
-              Actualizar
-            </Button>
           </Box>
 
           {statsData && statsData.length > 0 ? (
@@ -797,9 +909,10 @@ const InventoryHistoryComponent = () => {
           <Button onClick={() => setStatsDialogOpen(false)}>Cerrar</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Diálogo de filtros avanzados */}
     </div>
   );
-  
 };
 
 export default InventoryHistoryComponent;

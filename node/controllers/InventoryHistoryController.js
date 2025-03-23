@@ -7,7 +7,15 @@ import { Op } from "sequelize";
 // Obtener historial de inventario (entradas/modificaciones)
 export const getInventoryHistory = async (req, res) => {
   try {
-    const { startDate, endDate, tipo, productId } = req.query;
+    const {
+      startDate,
+      endDate,
+      tipo,
+      productId,
+      sortBy = "fecha", 
+      orderDir = "DESC",
+      showInactiveProducts = false,
+    } = req.query;
 
     // Construir la consulta base
     const query = {
@@ -16,6 +24,7 @@ export const getInventoryHistory = async (req, res) => {
           model: ProductModel,
           as: "producto",
           attributes: ["id", "descripcion", "precio", "image"],
+          where: showInactiveProducts === "true" ? {} : { activo: true },
           include: [
             {
               model: CategoryModel,
@@ -58,6 +67,25 @@ export const getInventoryHistory = async (req, res) => {
         product_id: productId,
       };
     }
+
+    // Configurar ordenamiento
+    let order = [];
+
+    switch (sortBy) {
+      case "fecha":
+        order.push(["fecha", orderDir]);
+        break;
+      case "tipo":
+        order.push(["tipo", orderDir]);
+        break;
+      case "cantidad":
+        order.push(["diferencia", orderDir]);
+        break;
+      default:
+        order.push(["fecha", "DESC"]);
+    }
+
+    query.order = order;
 
     const history = await InventoryHistoryModel.findAll(query);
 

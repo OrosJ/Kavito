@@ -97,11 +97,10 @@ const CompProjectDetails = () => {
     if (project) {
       setProjectName(project.nombre || "");
       setProjectDescription(project.descripcion || "");
+      setProjectAddress(project.direccion || "");
       setProjectClient(project?.client_id?.toString() || "");
       setProjectStartDate(project.fecha_inicio || "");
       setProjectEndDate(project.fecha_entrega || "");
-      setProjectBudget(project.costo || 0);
-      setProjectProducts(project.products || []);
     }
   }, [project]);
 
@@ -1226,6 +1225,27 @@ const CompProjectDetails = () => {
                       ) : (
                         <Typography variant="body1">
                           Bs. {parseFloat(project.costo).toFixed(2)}
+                        </Typography>
+                      )}
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Paper sx={{ p: 2 }}>
+                      {editMode ? (
+                        <TextField
+                          label="Dirección de entrega"
+                          value={projectAddress}
+                          onChange={(e) => setProjectAddress(e.target.value)}
+                          fullWidth
+                          sx={{ mt: 2 }}
+                          placeholder="Ingrese dirección de entrega (opcional)"
+                        />
+                      ) : (
+                        <Typography sx={{ mt: 2 }}>
+                          <strong>Dirección de entrega:</strong>{" "}
+                          {project.direccion
+                            ? project.direccion
+                            : "Sin dirección de entrega"}
                         </Typography>
                       )}
                     </Paper>
