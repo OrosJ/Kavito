@@ -10,7 +10,6 @@ import {
   Chip,
   Button,
   Stack,
-  Divider,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -31,7 +30,7 @@ import {
   Select,
 } from "@mui/material";
 
-import { Delete as DeleteIcon, Add as AddIcon } from "@mui/icons-material";
+import { Delete as DeleteIcon } from "@mui/icons-material";
 import {
   Receipt as ReceiptIcon,
   BookmarkAdd as BookmarkAddIcon,
@@ -42,7 +41,6 @@ import {
   CheckCircle as CheckCircleIcon,
   PlayArrow as PlayArrowIcon,
   Pause as PauseIcon,
-  PictureAsPdf as PdfIcon,
   Save as SaveIcon,
 } from "@mui/icons-material";
 

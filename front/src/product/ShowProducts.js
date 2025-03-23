@@ -29,7 +29,7 @@ const CompShowProducts = () => {
       setLoading(true);
       setError(null);
       const res = await axios.get(URI);
-      console.log("Productos recibidos:", res.data);
+      /* console.log("Productos recibidos:", res.data); */
       setProducts(res.data || []);
     } catch (error) {
       setError(
@@ -299,9 +299,13 @@ const CompShowProducts = () => {
   const columns = useMemo(
     () => [
       {
-        accessorKey: "id",
-        header: "#",
+        id: 'index', // id único para la columna
+        header: '#',
         size: 50,
+        Cell: ({ row }) => {
+          // El índice de la fila más 1 (para empezar en 1 en vez de 0)
+          return <span>{row.index + 1}</span>;
+        },
       },
       {
         accessorKey: "descripcion",

@@ -135,7 +135,7 @@ export const recordInventoryChange = async (
   transaction = null
 ) => {
   try {
-    console.log("recordInventoryChange called with params:", {
+    /*     console.log("recordInventoryChange called with params:", {
       productId,
       cantidadAnterior,
       cantidadNueva,
@@ -143,7 +143,7 @@ export const recordInventoryChange = async (
       motivo,
       userId,
       withTransaction: !!transaction,
-    });
+    }); */
 
     /*     if (!productId) {
       console.error("no se encontro el id de producto");
@@ -151,7 +151,7 @@ export const recordInventoryChange = async (
     } */
 
     const diferencia = cantidadNueva - cantidadAnterior;
-    console.log(`diferencia calculada: ${diferencia}`);
+    /* console.log(`diferencia calculada: ${diferencia}`); */
 
     // verificar tipo
     const validTypes = [
@@ -216,15 +216,15 @@ export const recordInventoryChange = async (
 
       result = true;
     } catch (innerError) {
-      // 
+      //
       if (localTransaction) {
         await localTransaction.rollback();
       }
-      throw innerError; // 
+      throw innerError; //
     }
 
     // validar ID
-/*     if (!userId) {
+    /*     if (!userId) {
       console.warn("No hay ID de usuario");
     } */
 

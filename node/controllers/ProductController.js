@@ -227,7 +227,7 @@ export const updateProduct = async (req, res) => {
 export const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`Intentando eliminar con ID: ${id}`);
+    /* console.log(`Intentando eliminar con ID: ${id}`); */
 
     // Obtener el producto antes de eliminarlo
     const product = await ProductModel.findByPk(id);
@@ -236,7 +236,7 @@ export const deleteProduct = async (req, res) => {
       return res.status(404).json({ message: "Producto no encontrado" });
     }
 
-    console.log(`producto encontrado: ${product.descripcion}`);
+    /* console.log(`producto encontrado: ${product.descripcion}`); */
 
     // Verificar si tiene reservas
     console.log(

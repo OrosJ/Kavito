@@ -19,15 +19,12 @@ import {
   Select,
   MenuItem,
   Grid,
-  Divider,
-  Paper,
   ToggleButtonGroup,
   ToggleButton,
   FormControlLabel,
   Switch,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import PauseIcon from "@mui/icons-material/Pause";
@@ -497,9 +494,10 @@ const CompShowProjects = () => {
   const columns = useMemo(
     () => [
       {
-        accessorKey: "id",
+        id: "index",
         header: "#",
         size: 50,
+        Cell: ({ row }) => <span>{row.index + 1}</span>,
       },
       {
         accessorKey: "nombre",
@@ -599,6 +597,10 @@ const CompShowProjects = () => {
     []
   );
 
+  const columnIds = columns.map(
+    (column) => column.id || column.accessorKey || column.header
+  );
+
   return (
     <div className="container">
       <h1 style={{ color: "#2563eb", fontWeight: 800, fontSize: "2rem" }}>
@@ -622,7 +624,11 @@ const CompShowProjects = () => {
           filters.mostrarInactivos ||
           filters.sortBy !== "fecha_entrega" ||
           filters.orderDir !== "ASC") && (
-          <Button variant="text" onClick={handleResetFilters} sx={{ ml: 1,  backgroundColor: "white" }}>
+          <Button
+            variant="text"
+            onClick={handleResetFilters}
+            sx={{ ml: 1, backgroundColor: "white" }}
+          >
             Limpiar filtros
           </Button>
         )}
@@ -639,6 +645,64 @@ const CompShowProjects = () => {
             data={projects}
             enableRowActions
             state={{ isLoading: loading }}
+            // Configuraciones para scroll fijo
+            enableStickyHeader
+            layoutMode="grid"
+            enableColumnResizing
+            columnResizeMode="onChange"
+            muiTablePaperProps={{
+              sx: {
+                // IMPORTANTE: Esta propiedad fija la tabla y su scroll en la ventana
+                position: "sticky",
+                top: 0,
+                zIndex: 1,
+                width: "100%",
+              },
+            }}
+            muiTableContainerProps={{
+              sx: {
+                overflow: "auto",
+            position: "relative",
+                border: "1px solid rgba(0, 0, 0, 0.1)",
+                borderRadius: "8px",
+                "&::-webkit-scrollbar": {
+                  height: "10px",
+                  width: "10px",
+                },
+                "&::-webkit-scrollbar-track": {
+                  background: "#f1f1f1",
+                  borderRadius: "4px",
+                },
+                "&::-webkit-scrollbar-thumb": {
+                  background: "#888",
+                  borderRadius: "4px",
+                },
+                "&::-webkit-scrollbar-thumb:hover": {
+                  background: "#555",
+                },
+              },
+            }}
+            // CORRECCIÓN: Configurar la columna de acciones
+            displayColumnDefOptions={{
+              "mrt-row-actions": {
+                header: "Acciones",
+                size: 120, // Un poco más ancho para los iconos de proyectos
+                muiTableHeadCellProps: {
+                  align: "center",
+                },
+                muiTableBodyCellProps: {
+                  align: "center",
+                },
+              },
+            }}
+            // Establecer el orden inicial de columnas
+            initialState={{
+              columnOrder: [
+                ...columnIds, // Todas las columnas de datos primero
+                "mrt-row-actions", // La columna de acciones al final
+              ],
+              density: "compact",
+            }}
             renderTopToolbarCustomActions={({ table }) => (
               <Box sx={{ display: "flex", gap: "1rem", p: "4px" }}>
                 <Button
@@ -711,6 +775,8 @@ const CompShowProjects = () => {
                 )}
               </Box>
             )}
+            // Mantener esta propiedad también
+            positionActionsColumn="last"
             muiTableBodyRowProps={({ row }) => ({
               sx: {
                 backgroundColor: !row.original.activo

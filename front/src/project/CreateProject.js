@@ -21,7 +21,7 @@ import {
   getTodayDate,
   isDateBefore,
   isDateAfter,
-  isDateEqual,
+  /* isDateEqual, */
 } from "../utils/dateUtils";
 
 const CompCreateProject = () => {

@@ -76,12 +76,10 @@ const Sidebar = ({ isSidebarOpen, onClose }) => {
               : ""
           } menu-parent`}
         >
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              toggleInventoryMenu();
-            }}
+          <button
+            type="button"
+            className="menu-button"
+            onClick={toggleInventoryMenu}
           >
             <FaWarehouse /> Inventario
             {inventoryExpanded ? (
@@ -89,7 +87,7 @@ const Sidebar = ({ isSidebarOpen, onClose }) => {
             ) : (
               <FaAngleDown className="menu-arrow" />
             )}
-          </a>
+          </button>
 
           {inventoryExpanded && (
             <ul className="submenu">

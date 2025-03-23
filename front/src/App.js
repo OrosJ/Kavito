@@ -123,8 +123,8 @@ function App() {
             path="/login"
             element={<Login setIsAuthenticated={setIsAuthenticated} />}
           />
-        </Routes>
-        <Routes>
+{/*         </Routes>
+        <Routes> */}
           {/* Ruta para la página principal */}
           <Route
             path="/"

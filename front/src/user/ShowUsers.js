@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import axios from "axios";
+/* import axios from "axios"; */
 import { Link, useNavigate } from "react-router-dom";
 import { MaterialReactTable } from "material-react-table";
 import {
@@ -197,9 +197,10 @@ const CompShowUsers = () => {
   const columns = useMemo(
     () => [
       {
-        accessorKey: "id",
-        header: "#",
+        id: 'index',
+        header: '#',
         size: 50,
+        Cell: ({ row }) => <span>{row.index + 1}</span>,
       },
       {
         accessorKey: "username",

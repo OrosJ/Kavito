@@ -43,9 +43,10 @@ const CompShowInvOuts = () => {
   const columns = useMemo(
     () => [
       {
-        accessorKey: "id",
-        header: "#",
+        id: 'index',
+        header: '#',
         size: 50,
+        Cell: ({ row }) => <span>{row.index + 1}</span>,
       },
       {
         accessorKey: "codigo",

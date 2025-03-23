@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
-import { Link } from "react-router-dom";
 import { MaterialReactTable } from "material-react-table";
 import {
   Button,
@@ -265,13 +264,23 @@ const InventoryHistoryComponent = () => {
   const columns = useMemo(
     () => [
       {
-        accessorKey: "id",
-        header: "ID",
+        id: "index",
+        header: "#",
         size: 50,
+        minSize: 50,
+        maxSize: 60,
+        Cell: ({ row }) => (
+          <div style={{ textAlign: "center" }}>{row.index + 1}</div>
+        ),
+        muiTableHeadCellProps: {
+          align: "center",
+        },
       },
       {
         accessorKey: "tipo",
         header: "Tipo",
+        size: 120,
+        minSize: 100,
         Cell: ({ row }) => {
           const tipo = row.original.tipo;
           let color;
@@ -299,6 +308,8 @@ const InventoryHistoryComponent = () => {
       },
       {
         header: "Producto",
+        size: 200,
+        grow: true,
         Cell: ({ row }) => {
           const producto = row.original.producto;
           if (!producto) return "N/A";
@@ -333,29 +344,61 @@ const InventoryHistoryComponent = () => {
       {
         accessorKey: "cantidad_anterior",
         header: "Cant. Anterior",
-        size: 100,
+        size: 80, // Reducido
+        minSize: 80, // Fijo
+        maxSize: 90, // Limitado
+        // Centrar el contenido
+        Cell: ({ cell }) => (
+          <div style={{ textAlign: "center", width: "100%" }}>
+            {cell.getValue() || 0}
+          </div>
+        ),
+        // Centrar el encabezado
+        muiTableHeadCellProps: {
+          align: "center",
+        },
       },
       {
         accessorKey: "cantidad_nueva",
         header: "Cant. Nueva",
-        size: 100,
+        size: 80, // Reducido
+        minSize: 80, // Fijo
+        maxSize: 90, // Limitado
+        // Centrar el contenido
+        Cell: ({ cell }) => (
+          <div style={{ textAlign: "center", width: "100%" }}>
+            {cell.getValue() || 0}
+          </div>
+        ),
+        // Centrar el encabezado
+        muiTableHeadCellProps: {
+          align: "center",
+        },
       },
       {
         accessorKey: "diferencia",
         header: "Diferencia",
+        size: 80, // Reducido
+        minSize: 80, // Fijo
+        maxSize: 90, // Limitado
         Cell: ({ row }) => {
           const diff = row.original.diferencia;
           return (
-            <Typography
-              variant="body2"
-              sx={{
+            <div
+              style={{
+                textAlign: "center",
+                width: "100%",
                 color: diff > 0 ? "green" : diff < 0 ? "red" : "inherit",
                 fontWeight: diff !== 0 ? "bold" : "normal",
               }}
             >
               {diff > 0 ? `+${diff}` : diff}
-            </Typography>
+            </div>
           );
+        },
+        // Centrar el encabezado
+        muiTableHeadCellProps: {
+          align: "center",
         },
       },
       {
@@ -378,6 +421,11 @@ const InventoryHistoryComponent = () => {
       },
     ],
     []
+  );
+
+  // Obtener IDs de todas las columnas para usarlos en el orden inicial
+  const columnIds = columns.map(
+    (column) => column.id || column.accessorKey || column.header
   );
 
   return (
@@ -508,8 +556,72 @@ const InventoryHistoryComponent = () => {
         data={history}
         state={{ isLoading: loading }}
         enableRowActions
+        enableStickyHeader
+        layoutMode="grid"
+        enableColumnResizing
+        columnResizeMode="onChange"
+        muiTablePaperProps={{
+          sx: {
+            // IMPORTANTE: Esta propiedad fija la tabla y su scroll en la ventana
+            position: "sticky",
+            top: 0,
+            zIndex: 1,
+            width: "100%",
+          },
+        }}
+        muiTableContainerProps={{
+          sx: {
+            overflow: "auto",
+            position: "relative",
+            border: "1px solid rgba(0, 0, 0, 0.1)",
+            borderRadius: "8px",
+            "&::-webkit-scrollbar": {
+              height: "10px",
+              width: "10px",
+            },
+            "&::-webkit-scrollbar-track": {
+              background: "#f1f1f1",
+              borderRadius: "4px",
+            },
+            "&::-webkit-scrollbar-thumb": {
+              background: "#888",
+              borderRadius: "4px",
+            },
+            "&::-webkit-scrollbar-thumb:hover": {
+              background: "#555",
+            },
+          },
+        }}
+        // Configurar la columna de acciones
+        displayColumnDefOptions={{
+          "mrt-row-actions": {
+            header: "Acciones",
+            size: 80,
+            minSize: 80,
+            maxSize: 90,
+            muiTableHeadCellProps: {
+              align: "center",
+            },
+            muiTableBodyCellProps: {
+              align: "center",
+            },
+          },
+        }}
+        // Establecer el orden inicial de columnas
+        initialState={{
+          columnOrder: [
+            ...columns.map(col => col.id || col.accessorKey || col.header),
+            'mrt-row-actions'
+          ],
+          density: "compact",
+        }}
+
+        positionActionsColumn="last"
+
         renderRowActions={({ row }) => (
-          <Box sx={{ display: "flex", gap: "0.5rem" }}>
+          <Box
+            sx={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}
+          >
             <Tooltip title="Ver Detalles">
               <IconButton
                 color="info"
@@ -552,6 +664,7 @@ const InventoryHistoryComponent = () => {
             </Tooltip>
           </Box>
         )}
+        
         localization={{
           noRecordsToDisplay: "No hay registros de inventario disponibles",
         }}
@@ -686,6 +799,7 @@ const InventoryHistoryComponent = () => {
       </Dialog>
     </div>
   );
+  
 };
 
 export default InventoryHistoryComponent;
