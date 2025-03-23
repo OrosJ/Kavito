@@ -25,11 +25,12 @@ import {
   TableHead,
   TableRow,
   TextField,
+  FormControl,
+  InputLabel,
   LinearProgress,
   Paper,
   Select,
 } from "@mui/material";
-
 import { Delete as DeleteIcon } from "@mui/icons-material";
 import {
   Receipt as ReceiptIcon,
@@ -80,8 +81,8 @@ const CompProjectDetails = () => {
   const [projectClient, setProjectClient] = useState("");
   const [projectStartDate, setProjectStartDate] = useState(null);
   const [projectEndDate, setProjectEndDate] = useState(null);
+  const [projectAddress, setProjectAddress] = useState("");
   const [projectBudget, setProjectBudget] = useState(0);
-  const [projectProducts, setProjectProducts] = useState([]);
   const [newProducts, setNewProducts] = useState([]);
   const [availableProducts, setAvailableProducts] = useState([]);
   const [clients, setClients] = useState([]);
@@ -97,10 +98,10 @@ const CompProjectDetails = () => {
     if (project) {
       setProjectName(project.nombre || "");
       setProjectDescription(project.descripcion || "");
-      setProjectAddress(project.direccion || "");
       setProjectClient(project?.client_id?.toString() || "");
       setProjectStartDate(project.fecha_inicio || "");
       setProjectEndDate(project.fecha_entrega || "");
+      setProjectAddress(project.direccion || "");
     }
   }, [project]);
 
@@ -120,6 +121,25 @@ const CompProjectDetails = () => {
 
     if (editMode) {
       fetchProducts();
+    }
+  }, [editMode]);
+
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const response = await axios.get("http://localhost:8000/clients", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+          },
+        });
+        setClients(response.data);
+      } catch (error) {
+        console.error("Error fetching clients:", error);
+      }
+    };
+
+    if (editMode) {
+      fetchClients();
     }
   }, [editMode]);
 
@@ -606,16 +626,36 @@ const CompProjectDetails = () => {
     );
   };
 
-  // Edit mode functions
+  // Edit
   const handleSaveProject = async () => {
     try {
-      const productosFormateados = [...project.products, ...newProducts].map(
-        (p) => ({
-          product_id: p.id,
-          cantidad_requerida: p.project_products.cantidad_requerida,
-          fecha_requerida: null,
-        })
-      );
+      // Validaciones básicas
+      if (
+        !projectName ||
+        !projectClient ||
+        !projectStartDate ||
+        !projectEndDate
+      ) {
+        Swal.fire({
+          icon: "error",
+          title: "Datos incompletos",
+          text: "Por favor complete los campos obligatorios: nombre, cliente, fecha de inicio y fecha de entrega",
+        });
+        return;
+      }
+
+      // Validar fechas
+      const startDate = new Date(projectStartDate);
+      const endDate = new Date(projectEndDate);
+
+      if (endDate < startDate) {
+        Swal.fire({
+          icon: "error",
+          title: "Error en fechas",
+          text: "La fecha de entrega debe ser posterior a la fecha de inicio",
+        });
+        return;
+      }
 
       const token = localStorage.getItem("authToken");
       await axios.put(
@@ -625,9 +665,8 @@ const CompProjectDetails = () => {
           descripcion: projectDescription,
           fecha_inicio: projectStartDate,
           fecha_entrega: projectEndDate,
-          productos: productosFormateados,
           client_id: projectClient,
-          presupuesto: projectBudget,
+          direccion: projectAddress,
         },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -635,26 +674,38 @@ const CompProjectDetails = () => {
       );
 
       setEditMode(false);
-      getProject();
-      Swal.fire("Éxito", "Proyecto actualizado correctamente", "success");
+      getProject(); // Recargar proyecto con los datos actualizados
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: "Proyecto actualizado correctamente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
     } catch (error) {
-      Swal.fire(
-        "Error",
-        error.response?.data?.message || "Error al actualizar el proyecto",
-        "error"
-      );
+      console.error("Error al actualizar el proyecto:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text:
+          error.response?.data?.message || "Error al actualizar el proyecto",
+      });
     }
   };
 
   const handleCancelEdit = () => {
+    // Restaurar los valores originales
+    if (project) {
+      setProjectName(project.nombre || "");
+      setProjectDescription(project.descripcion || "");
+      setProjectClient(project.client_id?.toString() || "");
+      setProjectStartDate(project.fecha_inicio || "");
+      setProjectEndDate(project.fecha_entrega || "");
+      setProjectAddress(project.direccion || "");
+    }
+
+    // Salir del modo edición
     setEditMode(false);
-    setProjectName(project.nombre);
-    setProjectDescription(project.descripcion);
-    setProjectClient(project.client_id);
-    setProjectStartDate(project.fecha_inicio);
-    setProjectEndDate(project.fecha_entrega);
-    setProjectBudget(project.presupuesto);
-    setNewProducts([]);
   };
 
   // Product management
@@ -1081,12 +1132,16 @@ const CompProjectDetails = () => {
                   onChange={(e) => setProjectName(e.target.value)}
                   fullWidth
                   sx={{ mb: 2 }}
+                  required
+                  error={!projectName}
+                  helperText={!projectName ? "El nombre es requerido" : ""}
                 />
               ) : (
                 <Typography variant="h4" gutterBottom>
                   {project.nombre}
                 </Typography>
               )}
+
               {editMode ? (
                 <TextField
                   label="Descripción"
@@ -1116,15 +1171,33 @@ const CompProjectDetails = () => {
                   color={getPriorityColor(project.prioridad)}
                   variant="outlined"
                 />
-                {!editMode && (
+                {!editMode ? (
                   <Button
                     variant="contained"
                     color="primary"
                     startIcon={<EditIcon />}
                     onClick={() => setEditMode(true)}
+                    disabled={
+                      project.estado === "COMPLETADO" ||
+                      project.estado === "CANCELADO"
+                    }
                   >
                     Editar Proyecto
                   </Button>
+                ) : (
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      startIcon={<SaveIcon />}
+                      onClick={handleSaveProject}
+                    >
+                      Guardar
+                    </Button>
+                    <Button variant="outlined" onClick={handleCancelEdit}>
+                      Cancelar
+                    </Button>
+                  </Stack>
                 )}
               </Stack>
             </Grid>
@@ -1140,17 +1213,27 @@ const CompProjectDetails = () => {
                         Cliente
                       </Typography>
                       {editMode ? (
-                        <Select
-                          value={projectClient || ""}
-                          onChange={(e) => setProjectClient(e.target.value)}
-                          fullWidth
-                        >
-                          {clients.map((client) => (
-                            <MenuItem key={client.id} value={client.id}>
-                              {client.clientname}
+                        <FormControl fullWidth>
+                          <Select
+                            value={projectClient || ""}
+                            onChange={(e) => setProjectClient(e.target.value)}
+                            fullWidth
+                            required
+                            error={!projectClient}
+                          >
+                            <MenuItem value="" disabled>
+                              Seleccione un cliente
                             </MenuItem>
-                          ))}
-                        </Select>
+                            {clients.map((client) => (
+                              <MenuItem
+                                key={client.id}
+                                value={client.id.toString()}
+                              >
+                                {client.clientname}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
                       ) : (
                         <Typography variant="body1">
                           {project?.client?.clientname || "No asignado"}
@@ -1166,7 +1249,7 @@ const CompProjectDetails = () => {
                         Fecha Inicio
                       </Typography>
                       {editMode ? (
-                        <input
+                        <TextField
                           type="date"
                           value={
                             typeof projectStartDate === "string"
@@ -1174,7 +1257,10 @@ const CompProjectDetails = () => {
                               : projectStartDate
                           }
                           onChange={(e) => setProjectStartDate(e.target.value)}
-                          style={{ width: "100%" }}
+                          fullWidth
+                          required
+                          error={!projectStartDate}
+                          InputLabelProps={{ shrink: true }}
                         />
                       ) : (
                         <Typography variant="body1">
@@ -1191,7 +1277,7 @@ const CompProjectDetails = () => {
                         Fecha Entrega
                       </Typography>
                       {editMode ? (
-                        <input
+                        <TextField
                           type="date"
                           value={
                             typeof projectEndDate === "string"
@@ -1199,7 +1285,10 @@ const CompProjectDetails = () => {
                               : projectEndDate
                           }
                           onChange={(e) => setProjectEndDate(e.target.value)}
-                          style={{ width: "100%" }}
+                          fullWidth
+                          required
+                          error={!projectEndDate}
+                          InputLabelProps={{ shrink: true }}
                         />
                       ) : (
                         <Typography variant="body1">
@@ -1215,37 +1304,27 @@ const CompProjectDetails = () => {
                       <Typography variant="subtitle2" color="textSecondary">
                         Costo Total
                       </Typography>
-                      {editMode ? (
-                        <TextField
-                          type="number"
-                          value={projectBudget}
-                          onChange={(e) => setProjectBudget(e.target.value)}
-                          fullWidth
-                        />
-                      ) : (
-                        <Typography variant="body1">
-                          Bs. {parseFloat(project.costo).toFixed(2)}
-                        </Typography>
-                      )}
+                      <Typography variant="body1">
+                        Bs. {parseFloat(project.costo).toFixed(2)}
+                      </Typography>
                     </Paper>
                   </Grid>
+
                   <Grid item xs={12} sm={6} md={3}>
                     <Paper sx={{ p: 2 }}>
+                      <Typography variant="subtitle2" color="textSecondary">
+                        Dirección de entrega
+                      </Typography>
                       {editMode ? (
                         <TextField
-                          label="Dirección de entrega"
                           value={projectAddress}
                           onChange={(e) => setProjectAddress(e.target.value)}
                           fullWidth
-                          sx={{ mt: 2 }}
                           placeholder="Ingrese dirección de entrega (opcional)"
                         />
                       ) : (
-                        <Typography sx={{ mt: 2 }}>
-                          <strong>Dirección de entrega:</strong>{" "}
-                          {project.direccion
-                            ? project.direccion
-                            : "Sin dirección de entrega"}
+                        <Typography variant="body1">
+                          {project.direccion || "No especificada"}
                         </Typography>
                       )}
                     </Paper>
@@ -1312,181 +1391,187 @@ const CompProjectDetails = () => {
       </Card>
 
       {/* Products Table Card */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Productos del Proyecto
-          </Typography>
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Producto</TableCell>
-                  <TableCell align="center">Requerido</TableCell>
-                  <TableCell align="center">Reservado</TableCell>
-                  <TableCell align="center">Entregado</TableCell>
-                  <TableCell align="center">Estado</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {project.products.map((product) => (
-                  <TableRow key={product.id}>
-                    <TableCell>{product.descripcion}</TableCell>
-                    <TableCell align="center">
-                      {editMode ? (
-                        <TextField
-                          type="number"
-                          value={product.project_products.cantidad_requerida}
-                          onChange={(e) =>
-                            handleUpdateExistingProductQuantity(
-                              product.id,
-                              e.target.value
-                            )
-                          }
-                          inputProps={{ min: 1 }}
-                          size="small"
-                        />
-                      ) : (
-                        product.project_products.cantidad_requerida
-                      )}
-                    </TableCell>
-                    <TableCell align="center">
-                      <Chip
-                        label={product.project_products.cantidad_reservada}
-                        color={
-                          product.project_products.cantidad_reservada > 0
-                            ? "primary"
-                            : "default"
-                        }
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <LinearProgress
-                          variant="determinate"
-                          value={
-                            (product.project_products.cantidad_entregada /
-                              product.project_products.cantidad_requerida) *
-                            100
-                          }
-                          sx={{ width: "100px", mr: 1 }}
-                        />
-                        <Typography variant="body2">
-                          {product.project_products.cantidad_entregada}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Chip
-                        label={product.project_products.estado}
-                        color={getProductStatusColor(
-                          product.project_products.estado
-                        )}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      {editMode ? (
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleRemoveProduct(product)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      ) : (
-                        renderProductActions(product)
-                      )}
-                    </TableCell>
+      {!editMode && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Productos del Proyecto
+            </Typography>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Producto</TableCell>
+                    <TableCell align="center">Requerido</TableCell>
+                    <TableCell align="center">Reservado</TableCell>
+                    <TableCell align="center">Entregado</TableCell>
+                    <TableCell align="center">Estado</TableCell>
+                    <TableCell align="center">Acciones</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {project.products.map((product) => (
+                    <TableRow key={product.id}>
+                      <TableCell>{product.descripcion}</TableCell>
+                      <TableCell align="center">
+                        {editMode ? (
+                          <TextField
+                            type="number"
+                            value={product.project_products.cantidad_requerida}
+                            onChange={(e) =>
+                              handleUpdateExistingProductQuantity(
+                                product.id,
+                                e.target.value
+                              )
+                            }
+                            inputProps={{ min: 1 }}
+                            size="small"
+                          />
+                        ) : (
+                          product.project_products.cantidad_requerida
+                        )}
+                      </TableCell>
+                      <TableCell align="center">
+                        <Chip
+                          label={product.project_products.cantidad_reservada}
+                          color={
+                            product.project_products.cantidad_reservada > 0
+                              ? "primary"
+                              : "default"
+                          }
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <LinearProgress
+                            variant="determinate"
+                            value={
+                              (product.project_products.cantidad_entregada /
+                                product.project_products.cantidad_requerida) *
+                              100
+                            }
+                            sx={{ width: "100px", mr: 1 }}
+                          />
+                          <Typography variant="body2">
+                            {product.project_products.cantidad_entregada}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Chip
+                          label={product.project_products.estado}
+                          color={getProductStatusColor(
+                            product.project_products.estado
+                          )}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        {editMode ? (
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleRemoveProduct(product)}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        ) : (
+                          renderProductActions(product)
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
 
-          {editMode && (
-            <Box sx={{ mt: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Nuevos Productos
-              </Typography>
-              <Box sx={{ mb: 2 }}>
-                <Select
-                  value=""
-                  onChange={(e) => handleAddNewProduct(e.target.value)}
-                  sx={{ minWidth: 200 }}
-                  displayEmpty
-                >
-                  <MenuItem value="" disabled>
-                    Seleccionar producto
-                  </MenuItem>
-                  {availableProducts
-                    .filter(
-                      (p) => !project.products.find((pp) => pp.id === p.id)
-                    )
-                    .map((product) => (
-                      <MenuItem key={product.id} value={product.id}>
-                        {product.descripcion}
-                      </MenuItem>
-                    ))}
-                </Select>
-              </Box>
-              {newProducts.length > 0 && (
-                <TableContainer component={Paper}>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Producto</TableCell>
-                        <TableCell align="center">Cantidad Requerida</TableCell>
-                        <TableCell align="center">Acciones</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {newProducts.map((product) => (
-                        <TableRow key={product.id}>
-                          <TableCell>{product.descripcion}</TableCell>
-                          <TableCell align="center">
-                            <TextField
-                              type="number"
-                              value={
-                                product.project_products.cantidad_requerida
-                              }
-                              onChange={(e) =>
-                                handleUpdateNewProductQuantity(
-                                  product.id,
-                                  e.target.value
-                                )
-                              }
-                              inputProps={{ min: 1 }}
-                              size="small"
-                            />
-                          </TableCell>
-                          <TableCell align="center">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleRemoveNewProduct(product.id)}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
+            {editMode && (
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Nuevos Productos
+                </Typography>
+                <Box sx={{ mb: 2 }}>
+                  <Select
+                    value=""
+                    onChange={(e) => handleAddNewProduct(e.target.value)}
+                    sx={{ minWidth: 200 }}
+                    displayEmpty
+                  >
+                    <MenuItem value="" disabled>
+                      Seleccionar producto
+                    </MenuItem>
+                    {availableProducts
+                      .filter(
+                        (p) => !project.products.find((pp) => pp.id === p.id)
+                      )
+                      .map((product) => (
+                        <MenuItem key={product.id} value={product.id}>
+                          {product.descripcion}
+                        </MenuItem>
                       ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-            </Box>
-          )}
-        </CardContent>
-      </Card>
+                  </Select>
+                </Box>
+                {newProducts.length > 0 && (
+                  <TableContainer component={Paper}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Producto</TableCell>
+                          <TableCell align="center">
+                            Cantidad Requerida
+                          </TableCell>
+                          <TableCell align="center">Acciones</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {newProducts.map((product) => (
+                          <TableRow key={product.id}>
+                            <TableCell>{product.descripcion}</TableCell>
+                            <TableCell align="center">
+                              <TextField
+                                type="number"
+                                value={
+                                  product.project_products.cantidad_requerida
+                                }
+                                onChange={(e) =>
+                                  handleUpdateNewProductQuantity(
+                                    product.id,
+                                    e.target.value
+                                  )
+                                }
+                                inputProps={{ min: 1 }}
+                                size="small"
+                              />
+                            </TableCell>
+                            <TableCell align="center">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() =>
+                                  handleRemoveNewProduct(product.id)
+                                }
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Render Dialogs */}
       {renderDialogs()}

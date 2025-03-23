@@ -167,7 +167,7 @@ export const updateProduct = async (req, res) => {
         message: "El precio debe ser mayor que cero",
       });
     }
-    
+
     // Verificar que la categoría exista si se pasa una nueva
     if (categoria) {
       const category = await CategoryModel.findByPk(categoria);
@@ -318,6 +318,48 @@ export const deleteProduct = async (req, res) => {
   } catch (error) {
     console.error("Error al desactivar producto:", error);
     res.json({ message: error.message });
+  }
+};
+
+export const getLowStockProducts = async (req, res) => {
+  try {
+    // Define el umbral de stock bajo (puedes hacerlo configurable)
+    const threshold = 10;
+
+    const lowStockProducts = await ProductModel.findAll({
+      where: {
+        cantidad: { [Op.lt]: threshold },
+        activo: true, // Solo productos activos
+      },
+      include: [
+        {
+          model: CategoryModel,
+          attributes: ["categoryname"],
+        },
+      ],
+      order: [["cantidad", "ASC"]], // Ordenar por cantidad ascendente
+    });
+
+    // Asegurarse de que lowStockProducts sea un array
+    const productsArray = lowStockProducts || [];
+
+    // Formatear respuesta
+    const formattedProducts = lowStockProducts.map((product) => {
+      const productJSON = product.toJSON();
+      return {
+        ...productJSON,
+        cantidad_disponible:
+          product.cantidad - (product.cantidad_reservada || 0),
+        image: product.image
+          ? `http://localhost:8000/uploads/${product.image}`
+          : null,
+      };
+    });
+
+    res.json(formattedProducts || []);
+  } catch (error) {
+    console.error("Error al obtener productos con stock bajo:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 

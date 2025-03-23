@@ -2,14 +2,22 @@ import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { MaterialReactTable } from "material-react-table";
-import { Button, IconButton, Tooltip, Box, Chip, Stack } from "@mui/material";
+import {
+  Button,
+  IconButton,
+  Tooltip,
+  Box,
+  Chip,
+  Stack,
+} from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import PdfIcon from "@mui/icons-material/PictureAsPdf";
-import InventoryIcon from "@mui/icons-material/Inventory";
-import jsPDF from "jspdf";
+import InventoryIcon from "@mui/icons-material/Inventory";import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import Swal from "sweetalert2";
+import { FormControlLabel, Switch, Typography } from "@mui/material";
+import WarningIcon from "@mui/icons-material/Warning";
 /* import "../styles/ShowProducts.css" */
 
 const URI = "http://localhost:8000/products/";
@@ -19,9 +27,28 @@ const CompShowProducts = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Verificar si debemos mostrar solo productos con stock bajo (desde localStorage)
+  const initialLowStockFilter =
+    localStorage.getItem("showLowStockOnly") === "true";
+  const [showLowStockOnly, setShowLowStockOnly] = useState(
+    initialLowStockFilter
+  );
+
   useEffect(() => {
     getProducts();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      // Limpiar la preferencia al salir de la página
+      localStorage.removeItem("showLowStockOnly");
+    };
+  }, []);
+
+  const hasLowStock = (cantidad) => {
+    const threshold = 10; // Umbral de stock bajo (configurable)
+    return cantidad < threshold;
+  };
 
   // Obtener los productos
   const getProducts = async () => {
@@ -296,11 +323,28 @@ const CompShowProducts = () => {
     return "success";
   };
 
+  // Nueva función para manejar el cambio del filtro
+  const handleLowStockFilterChange = (e) => {
+    const newValue = e.target.checked;
+    setShowLowStockOnly(newValue);
+    if (newValue) {
+      localStorage.setItem("showLowStockOnly", "true");
+    } else {
+      localStorage.removeItem("showLowStockOnly");
+    }
+  };
+
+  // Filtrar productos para mostrar solo los de stock bajo si está activado
+  const filteredProducts = useMemo(() => {
+    if (!showLowStockOnly) return products;
+    return products.filter((product) => hasLowStock(Number(product.cantidad)));
+  }, [products, showLowStockOnly]);
+
   const columns = useMemo(
     () => [
       {
-        id: 'index', // id único para la columna
-        header: '#',
+        id: "index", // id único para la columna
+        header: "#",
         size: 50,
         Cell: ({ row }) => {
           // El índice de la fila más 1 (para empezar en 1 en vez de 0)
@@ -387,10 +431,10 @@ const CompShowProducts = () => {
                   borderRadius: "4px",
                 }}
                 onError={(e) => {
-                // en caso de error
-                e.target.onerror = null;
-                e.target.src = "/placeholder.png";
-              }}
+                  // en caso de error
+                  e.target.onerror = null;
+                  e.target.src = "/placeholder.png";
+                }}
               />
             ) : (
               <Box
@@ -444,9 +488,31 @@ const CompShowProducts = () => {
             <i className="fa-regular fa-square-plus"></i> NUEVO PRODUCTO
           </Link>
 
+          <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={showLowStockOnly}
+                  onChange={handleLowStockFilterChange}
+                  color="error"
+                />
+              }
+              label={
+                <Typography sx={{ display: "flex", alignItems: "center" }}>
+                  <WarningIcon
+                    color="error"
+                    fontSize="small"
+                    sx={{ mr: 0.5 }}
+                  />
+                  Mostrar solo productos con stock bajo
+                </Typography>
+              }
+            />
+          </Box>
+
           <MaterialReactTable
             columns={columns}
-            data={products}
+            data={filteredProducts}
             enableRowActions
             state={{ isLoading: loading, showProgressBars: loading }}
             renderEmptyRowsFallback={() => (

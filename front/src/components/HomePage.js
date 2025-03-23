@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useNavigate } from "react";
 import axios from "axios";
 import {
   LineChart,
@@ -12,6 +12,7 @@ import {
 import "../styles/HomePage.css";
 
 const HomePage = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalProducts: 0,
     lowStock: 0,
@@ -86,6 +87,13 @@ const HomePage = () => {
     }
   };
 
+  // Función para navegar a la vista de productos con stock bajo
+  const navigateToLowStockProducts = () => {
+    // Guardamos la preferencia en localStorage para que persista
+    localStorage.setItem("showLowStockOnly", "true");
+    navigate("/products");
+  };
+
   // Efecto inicial para cargar datos
   useEffect(() => {
     fetchDashboardData();
@@ -100,7 +108,7 @@ const HomePage = () => {
 
   if (loading) return <div className="loading-spinner">Cargando...</div>;
   if (error) return <div className="error-message">{error}</div>;
-  
+
   return (
     <div className="dashboard-container">
       <h1 className="dashboard-title">Panel de Control</h1>
@@ -115,7 +123,13 @@ const HomePage = () => {
           </div>
         </div>
 
-        <div className="stat-card warning">
+        <div
+          className="stat-card warning"
+          onClick={navigateToLowStockProducts}
+          style={{ cursor: "pointer", transition: "transform 0.2s ease" }}
+          onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.03)")}
+          onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
+        >
           <div className="stat-icon">⚠️</div>
           <div className="stat-content">
             <h3>Stock Bajo</h3>

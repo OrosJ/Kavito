@@ -1,5 +1,5 @@
 import express from 'express'
-import { createProduct, deleteProduct, getAllProducts, getProduct, updateProduct, uploadImage } from '../controllers/ProductController.js'
+import { createProduct, deleteProduct, getAllProducts, getProduct, updateProduct, uploadImage, getLowStockProducts } from '../controllers/ProductController.js'
 import { authenticateToken } from '../middlewares/authenticateToken.js'
 
 const router = express.Router()
@@ -11,6 +11,6 @@ router.post('/', authenticateToken, uploadImage, createProduct);
 // Ruta para actualizar un producto (con imagen)
 router.put('/:id',authenticateToken, uploadImage, updateProduct);
 router.delete('/:id', authenticateToken, deleteProduct)
-
+router.get('/low-stock', getLowStockProducts);
 
 export default router

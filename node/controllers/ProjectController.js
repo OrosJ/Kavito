@@ -394,9 +394,9 @@ export const updateProject = async (req, res) => {
       descripcion,
       fecha_inicio,
       fecha_entrega,
-      productos,
+      productos = null,
       client_id,
-      presupuesto,
+      direccion
     } = req.body;
 
     const project = await ProjectModel.findByPk(id, {
@@ -461,6 +461,7 @@ export const updateProject = async (req, res) => {
         fecha_entrega,
         client_id,
         costo: nuevoCosto,
+        direccion
       },
       { transaction }
     );

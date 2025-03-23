@@ -3,6 +3,7 @@ import { FaUserCircle, FaSignOutAlt, FaBars } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import "../styles/Navbar.css";
 import { decodeToken } from "../utils/api";
+import LowStockNotification from "./LowStockNotification";
 
 const Navbar = ({ onLogout, onToggleSidebar }) => {
   const [userRole, setUserRole] = useState("Usuario");
@@ -57,7 +58,18 @@ const Navbar = ({ onLogout, onToggleSidebar }) => {
         >
           <FaBars /> {/* Icono de menú hamburguesa */}
         </button>
+
         <div className="nav-user-section" ref={dropdownRef}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              marginRight: "10px",
+            }}
+          >
+            <LowStockNotification />
+          </div>
+          
           <div
             className="nav-user-info"
             onClick={() => {
