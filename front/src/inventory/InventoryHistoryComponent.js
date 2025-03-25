@@ -68,7 +68,7 @@ const InventoryHistoryComponent = () => {
     productId: "",
     sortBy: "fecha",
     orderDir: "DESC",
-    showInactiveProducts: false,
+    showInactiveProducts: true,
   });
 
   // Estado para nuevo registro de entrada
@@ -207,7 +207,10 @@ const InventoryHistoryComponent = () => {
         queryParams.push(`productId=${filters.productId}`);
       }
 
-      // Otros parámetros...
+      if (filters.showInactiveProducts) {
+        queryParams.push(`showInactiveProducts=true`);
+      }
+
       if (filters.sortBy) {
         queryParams.push(`sortBy=${filters.sortBy}`);
         queryParams.push(`orderDir=${filters.orderDir}`);
@@ -430,9 +433,9 @@ const InventoryHistoryComponent = () => {
       {
         accessorKey: "cantidad_anterior",
         header: "Cant. Anterior",
-        size: 80, // Reducido
-        minSize: 80, // Fijo
-        maxSize: 90, // Limitado
+        size: 200, // Reducido
+        minSize: 200, // Fijo
+        maxSize: 200, // Limitado
         // Centrar el contenido
         Cell: ({ cell }) => (
           <div style={{ textAlign: "center", width: "100%" }}>
@@ -447,9 +450,9 @@ const InventoryHistoryComponent = () => {
       {
         accessorKey: "cantidad_nueva",
         header: "Cant. Nueva",
-        size: 80, // Reducido
-        minSize: 80, // Fijo
-        maxSize: 90, // Limitado
+        size: 200, // Reducido
+        minSize: 200, // Fijo
+        maxSize: 200, // Limitado
         // Centrar el contenido
         Cell: ({ cell }) => (
           <div style={{ textAlign: "center", width: "100%" }}>
@@ -464,9 +467,9 @@ const InventoryHistoryComponent = () => {
       {
         accessorKey: "diferencia",
         header: "Diferencia",
-        size: 80, // Reducido
-        minSize: 80, // Fijo
-        maxSize: 90, // Limitado
+        size: 200, // Reducido
+        minSize: 200, // Fijo
+        maxSize: 200, // Limitado
         Cell: ({ row }) => {
           const diff = row.original.diferencia;
           return (
@@ -500,6 +503,9 @@ const InventoryHistoryComponent = () => {
       },
       {
         header: "Usuario",
+        size: 100, // Reducido
+        minSize: 100, // Fijo
+        maxSize: 100, // Limitado
         Cell: ({ row }) => {
           const usuario = row.original.usuario;
           return usuario ? usuario.username : "N/A";
@@ -560,7 +566,7 @@ const InventoryHistoryComponent = () => {
             <ToggleButton value="SALIDA" aria-label="salida">
               Salidas
             </ToggleButton>
-            <ToggleButton value="ELIMINACION" aria-label="eliminacion">
+            <ToggleButton value="DESACTIVACION" aria-label="eliminacion">
               Eliminaciones
             </ToggleButton>
           </ToggleButtonGroup>

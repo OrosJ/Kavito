@@ -763,14 +763,6 @@ const CompShowProjects = () => {
                         <AssignmentIcon />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Restaurar">
-                      <IconButton
-                        color="success"
-                        onClick={() => restoreProject(row.original.id)}
-                      >
-                        <RestoreIcon />
-                      </IconButton>
-                    </Tooltip>
                   </>
                 )}
               </Box>
